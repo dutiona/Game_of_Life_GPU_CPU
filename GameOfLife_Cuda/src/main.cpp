@@ -11,9 +11,9 @@ int main(int argc, char* argv[]){
 	//GLDisplay::run();
 
 	size_t nb_loop = 10000;
-	size_t width = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
-	size_t height = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
-	size_t fill_thresold = 30;
+	unsigned int width = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
+	unsigned int height = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
+	int fill_thresold = 30;
 	Grid cpu_grid;
 	initGrid(cpu_grid, width, height);
 
@@ -21,8 +21,8 @@ int main(int argc, char* argv[]){
 	const auto seed = std::random_device{}(); //seed ne dépend pas de std::chrono
 	std::mt19937 rd_mt_engine(seed); // mt19937 est le mersenne_twister_engine standard
 	std::uniform_int_distribution<int> uniform_distrib(1, 100); // distribution 1 à 100 uniforme
-	for (size_t i = 0; i < width; ++i){
-		for (size_t j = 0; j < height; ++j){
+	for (unsigned int i = 0; i < width; ++i){
+		for (unsigned int j = 0; j < height; ++j){
 			//Remplissage aléatoire de la grille en fonction du fill_thresold
 			cpu_grid.grid[i*cpu_grid.width + j] = uniform_distrib(rd_mt_engine) < fill_thresold;
 		}

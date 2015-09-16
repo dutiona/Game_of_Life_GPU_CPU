@@ -1,7 +1,7 @@
 #pragma once
 
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,12 +44,12 @@ inline void __cudaCheckError(const char *file, const int line){
 }
 
 typedef struct{
-	size_t width;
-	size_t height;
+	unsigned int width;
+	unsigned int height;
 	bool* grid;
 } Grid;
-__host__ void initGrid(Grid& g, size_t w, size_t h);
-__host__ void initGridCuda(Grid& g, size_t w, size_t h);
+__host__ void initGrid(Grid& g, unsigned int w, unsigned int h);
+__host__ void initGridCuda(Grid& g, unsigned int w, unsigned int h);
 __host__ void freeGrid(Grid& g);
 __host__ void freeGridCuda(Grid& g);
 
@@ -65,9 +65,9 @@ __global__ void gol_step_kernel(const Grid grid_const, Grid grid_computed);
 
 
 //Internal
-__device__ inline size_t countAliveNeighbours(size_t x, size_t y, const Grid& g);
+__device__ inline size_t countAliveNeighbours(unsigned int x, unsigned int y, const Grid& g);
 __host__ void printGrid(Grid& grid);
-__host__ void launch_kernel(const Grid& cpu_grid, size_t nb_loop, size_t width, size_t height);
+__host__ void launch_kernel(const Grid& cpu_grid, size_t nb_loop, unsigned int width, unsigned int height);
 
 
 

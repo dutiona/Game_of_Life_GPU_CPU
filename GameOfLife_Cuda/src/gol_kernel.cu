@@ -3,12 +3,12 @@
 #include <Windows.h>
 #include <time.h>
 
-__host__ void initGrid(Grid& g, size_t w, size_t h){
+__host__ void initGrid(Grid& g, unsigned int w, unsigned int h){
 	g.width = w;
 	g.height = h;
 	g.grid = (bool*)malloc(w*h*sizeof(bool));
 }
-__host__ void initGridCuda(Grid& g, size_t w, size_t h){
+__host__ void initGridCuda(Grid& g, unsigned int w, unsigned int h){
 	g.width = w;
 	g.height = h;
 	CudaSafeCall(cudaMalloc(&g.grid, w*h*sizeof(bool)));
@@ -20,9 +20,9 @@ __host__ void freeGridCuda(Grid& g){
 	CudaSafeCall(cudaFree(g.grid));
 }
 
-__device__ inline size_t countAliveNeighbours(size_t x, size_t y, const Grid& g){
-	size_t width = blockDim.x * gridDim.x;
-	size_t height = blockDim.y * gridDim.y;
+__device__ inline size_t countAliveNeighbours(unsigned int x, unsigned int y, const Grid& g){
+	unsigned int width = blockDim.x * gridDim.x;
+	unsigned int height = blockDim.y * gridDim.y;
 	int x_min_1 = ((x - 1) + width) % width;
 	int x_plus_1 = ((x + 1) + width) % width;
 	int y_min_1 = ((y - 1) + height) % height;
@@ -109,7 +109,7 @@ __host__ void do_step(const dim3& grid_size, const dim3& block_size, Grid& grid_
 	grid_const = tmp;
 }
 
-__host__ void launch_kernel(const Grid& cpu_grid, size_t nb_loop, size_t width, size_t height){
+__host__ void launch_kernel(const Grid& cpu_grid, size_t nb_loop, unsigned int width, unsigned int height){
 
 	//Affichage
 	//printGrid(cpu_grid);
@@ -127,7 +127,7 @@ __host__ void launch_kernel(const Grid& cpu_grid, size_t nb_loop, size_t width, 
 	dim3 grid_size = dim3(width / 8, height / 8);
 	dim3 block_size = dim3(8, 8);
 
-	for (int i = 0; i < nb_loop; ++i){
+	for (size_t i = 0; i < nb_loop; ++i){
 		do_step(grid_size, block_size, grid_const, grid_computed);
 	}
 

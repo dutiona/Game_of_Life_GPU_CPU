@@ -19,9 +19,9 @@ public:
     {
 		//Cuda init
 		size_t nb_loop = 10000;
-		size_t width = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
-		size_t height = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
-		size_t fill_thresold = 30;
+		unsigned int width = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
+		unsigned int height = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
+		int fill_thresold = 30;
 
 		Grid cpu_grid;
 		initGrid(cpu_grid, width, height);
@@ -31,8 +31,8 @@ public:
 		std::mt19937 rd_mt_engine(seed); // mt19937 est le mersenne_twister_engine standard
 		std::uniform_int_distribution<int> uniform_distrib(1, 100); // distribution 1 à 100 uniforme
 
-		for (size_t i = 0; i < cpu_grid.width; ++i){
-			for (size_t j = 0; j < cpu_grid.height; ++j){
+		for (unsigned int i = 0; i < cpu_grid.width; ++i){
+			for (unsigned int j = 0; j < cpu_grid.height; ++j){
 				//Remplissage aléatoire de la grille en fonction du fill_thresold
 				cpu_grid.grid[i*cpu_grid.width + j] = uniform_distrib(rd_mt_engine) < fill_thresold;
 			}
@@ -85,7 +85,7 @@ public:
 		cudaGLMapBufferObject(&color_buffer, buffer);
 
 		//Compute pixels
-		for (int i = 0; i < nb_loop; ++i){
+		for (size_t i = 0; i < nb_loop; ++i){
 			do_step_gl(grid_size, block_size, grid_const, grid_computed, (unsigned char*)color_buffer, 255, 0);
 		}
 
