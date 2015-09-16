@@ -15,13 +15,13 @@ public:
 		virtual void update(const Grid& grid) const = 0;
 	};
 
-	GoL_Engine(size_t width, size_t height, size_t fill_thresold);
-	GoL_Engine(size_t width, size_t height, size_t fill_thresold, size_t max_step);
+	GoL_Engine(size_t width_pow2, size_t height_pow2, size_t fill_thresold);
+	GoL_Engine(size_t width_pow2, size_t height_pow2, size_t fill_thresold, size_t max_step);
 
 	void registerObserver(std::shared_ptr<const IObserver> o);
 
 	void init();
-	void run();
+	void run(bool multithreaded);
 
 	bool allAlive() const;
 	bool allDead() const;
@@ -30,6 +30,8 @@ public:
 private:
 
 	bool do_step();
+	bool do_step_multithreaded(size_t thread_number);
+	bool do_step_multithreaded_omp(size_t thread_number);
 
 	void kill_lowNeighbours();
 	void live_2to3neighbours();

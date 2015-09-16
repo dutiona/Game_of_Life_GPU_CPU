@@ -31,6 +31,7 @@ public:
 	void resurect() { state_ = Alive; }
 
 	void go_on() const {}
+	void go_on(const Cell& cell) { state_ = cell.state_; }
 
 	const Coord2D& getCoord() const { return coord2D_; }
 	Coord2D& coord(){ return coord2D_; }

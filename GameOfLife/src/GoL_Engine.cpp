@@ -1,31 +1,44 @@
 #include "GoL_Engine.h"
 
+#include <cassert>
 #include <random>
+#include <functional>
+#include <thread>
+#include <omp.h>
 
 namespace{
-	size_t countAliveNeighbours(const std::vector<Cell>& pack){
-		auto cell_alive = 0u;
-		for (const auto& cell : pack){
-			if (cell.isAlive())
-				++cell_alive;
-		}
-		return cell_alive;
+	inline size_t countAliveNeighbours(size_t x, size_t y, const Grid& grid){
+		//auto cell_alive = 0u;
+		//for (int i = x - 1; i < x + 2; ++i){
+		//	for (int j = y - 1; j < y + 2; ++j){
+		//		if (grid(x, y).isAlive())
+		//			++cell_alive;
+		//	}
+		//}
+		return grid(x - 1, y - 1).isAlive() +
+			grid(x - 1, y).isAlive() +
+			grid(x - 1, y + 1).isAlive() +
+			grid(x, y - 1).isAlive() +
+			grid(x, y + 1).isAlive() +
+			grid(x + 1, y - 1).isAlive() +
+			grid(x + 1, y).isAlive() +
+			grid(x + 1, y + 1).isAlive();
 	}
 
-	size_t countDeadNeighbours(const std::vector<Cell>& pack){
-		return pack.size() - countAliveNeighbours(pack);
+	inline size_t countDeadNeighbours(size_t x, size_t y, const Grid& grid){
+		return 8 - countAliveNeighbours(x, y, grid);
 	}
 }
 
-GoL_Engine::GoL_Engine(size_t width, size_t height, size_t fill_thresold) :
-grid_(width, height),
+GoL_Engine::GoL_Engine(size_t width_pow2, size_t height_pow2, size_t fill_thresold) :
+grid_(std::pow(2, width_pow2), std::pow(2, height_pow2)),
 fill_thresold_(fill_thresold),
 step_number_(0),
 max_step_(std::numeric_limits<size_t>::max())
 {}
 
-GoL_Engine::GoL_Engine(size_t width, size_t height, size_t fill_thresold, size_t max_step) :
-grid_(width, height),
+GoL_Engine::GoL_Engine(size_t width_pow2, size_t height_pow2, size_t fill_thresold, size_t max_step) :
+grid_(std::pow(2, width_pow2), std::pow(2, height_pow2)),
 fill_thresold_(fill_thresold),
 step_number_(0),
 max_step_(max_step)
@@ -55,14 +68,40 @@ void GoL_Engine::init(){
 
 bool GoL_Engine::do_step(){
 	if (step_number_ < max_step_){
-		kill_lowNeighbours();
-		live_2to3neighbours();
-		kill_highNeighbours();
-		resurect_highNeighbours();
-		++step_number_;
-		if (step_number_ % 10 == 0){
-			std::cout << step_number_ << std::endl;
+		auto grid_working_cpy = Grid{ grid_.width(), grid_.height() }; //Copie de travail
+
+		for (size_t i = 0; i < grid_.width(); ++i){
+			for (size_t j = 0; j < grid_.height(); ++j){
+				const auto cells_alive = ::countAliveNeighbours(i, j, grid_);
+				//Any live cell with fewer than two live neighbors dies, as if caused by under - population.
+				if (grid_(i, j).isAlive() && cells_alive < 2){
+					grid_working_cpy(i, j).kill();
+				}
+				//Any live cell with two or three live neighbors lives on to the next generation.
+				else if (grid_(i, j).isAlive() && (cells_alive == 2 || cells_alive == 3)){
+					grid_working_cpy(i, j).go_on(grid_(i, j));
+				}
+				//Any live cell with more than three live neighbors dies, as if by overcrowding.
+				else if (grid_(i, j).isAlive() && cells_alive > 3){
+					grid_working_cpy(i, j).kill();
+				}
+				//Any dead cell with exactly three live neighbors becomes a live cell, as if by reproduction.
+				else if (grid_(i, j).isDead() && cells_alive == 3){
+					grid_working_cpy(i, j).resurect();
+				}
+				//Else.. do nothing
+				else{
+					grid_working_cpy(i, j).go_on(grid_(i, j));
+				}
+			}
 		}
+
+		std::swap(grid_, grid_working_cpy);
+
+		++step_number_;
+		//if (step_number_ % 10 == 0){
+		//	std::cout << 0 << std::endl;
+		//}
 		return true;
 	}
 	else{
@@ -70,10 +109,129 @@ bool GoL_Engine::do_step(){
 	}
 }
 
-void GoL_Engine::run(){
-	while (do_step())
-		notifyObservers();
 
+bool GoL_Engine::do_step_multithreaded_omp(size_t thread_number){
+	if (step_number_ < max_step_){
+		auto grid_working_cpy = Grid{ grid_.width(), grid_.height() }; //Copie de travail
+
+		//assert(grid_.width() % thread_number == 0 && grid_.height() % thread_number == 0);
+
+		int i, j;
+		#pragma omp parallel for private(i)
+		for (i = 0; i < grid_.width(); ++i){
+			#pragma omp parallel for private(j)
+			for (j = 0; j < grid_.height(); ++j){
+				const auto cells_alive = ::countAliveNeighbours(i, j, grid_);
+				//Any live cell with fewer than two live neighbors dies, as if caused by under - population.
+				if (grid_(i, j).isAlive() && cells_alive < 2){
+					grid_working_cpy(i, j).kill();
+				}
+				//Any live cell with two or three live neighbors lives on to the next generation.
+				else if (grid_(i, j).isAlive() && (cells_alive == 2 || cells_alive == 3)){
+					grid_working_cpy(i, j).go_on(grid_(i, j));
+				}
+				//Any live cell with more than three live neighbors dies, as if by overcrowding.
+				else if (grid_(i, j).isAlive() && cells_alive > 3){
+					grid_working_cpy(i, j).kill();
+				}
+				//Any dead cell with exactly three live neighbors becomes a live cell, as if by reproduction.
+				else if (grid_(i, j).isDead() && cells_alive == 3){
+					grid_working_cpy(i, j).resurect();
+				}
+				//Else.. do nothing
+				else{
+					grid_working_cpy(i, j).go_on(grid_(i, j));
+				}
+			}
+		}
+
+		std::swap(grid_, grid_working_cpy);
+
+		++step_number_;
+		//if (step_number_ % 10 == 0){
+		//	std::cout << step_number_ << std::endl;
+		//}
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
+bool GoL_Engine::do_step_multithreaded(size_t thread_number){
+	if (step_number_ < max_step_){
+		auto grid_working_cpy = Grid{ grid_.width(), grid_.height() }; //Copie de travail
+
+		assert(grid_.width() % thread_number == 0 && grid_.height() % thread_number == 0);
+
+		const auto thread_functor_factory = [&](size_t start_width, size_t end_width, size_t start_height, size_t end_height) -> std::function<void(void)>{
+			return [&](){
+				for (size_t i = start_width; i < end_width && i < grid_.width(); ++i){
+					for (size_t j = start_height; j < end_height && j < grid_.height(); ++j){
+						const auto cells_alive = ::countAliveNeighbours(i, j, grid_);
+						//Any live cell with fewer than two live neighbors dies, as if caused by under - population.
+						if (grid_(i, j).isAlive() && cells_alive < 2){
+							grid_working_cpy(i, j).kill();
+						}
+						//Any live cell with two or three live neighbors lives on to the next generation.
+						else if (grid_(i, j).isAlive() && (cells_alive == 2 || cells_alive == 3)){
+							grid_working_cpy(i, j).go_on(grid_(i, j));
+						}
+						//Any live cell with more than three live neighbors dies, as if by overcrowding.
+						else if (grid_(i, j).isAlive() && cells_alive > 3){
+							grid_working_cpy(i, j).kill();
+						}
+						//Any dead cell with exactly three live neighbors becomes a live cell, as if by reproduction.
+						else if (grid_(i, j).isDead() && cells_alive == 3){
+							grid_working_cpy(i, j).resurect();
+						}
+						//Else.. do nothing
+						else{
+							grid_working_cpy(i, j).go_on(grid_(i, j));
+						}
+					}
+				}
+			};
+		};
+
+		const size_t delta_width = grid_.width() / (std::sqrt(thread_number));
+		const size_t delta_height = grid_.height() / (std::sqrt(thread_number));
+		std::vector<std::thread> thread_list;
+
+		for (size_t i = 0; i < grid_.width(); i += delta_width){
+			for (size_t j = 0; j < grid_.height(); j += delta_height){
+				thread_list.emplace_back(std::move(std::thread{ thread_functor_factory(i, i + delta_width, j, j + delta_height) }));
+			}
+		}
+
+		for (auto& thread : thread_list){
+			thread.join();
+		}
+
+		std::swap(grid_, grid_working_cpy);
+
+		++step_number_;
+		//if (step_number_ % 10 == 0){
+		//	std::cout << step_number_ << std::endl;
+		//}
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
+void GoL_Engine::run(bool multithreaded){
+	if (!multithreaded){
+		while (do_step());
+		//notifyObservers();
+	}
+	else{
+		const size_t thread_number = 8;
+		omp_set_num_threads(thread_number);
+		while (do_step_multithreaded_omp(thread_number));
+		//notifyObservers();
+	}
 }
 
 
@@ -104,51 +262,6 @@ const Grid& GoL_Engine::getGrid() const{
 void GoL_Engine::notifyObservers(){
 	for (const auto& o : observers_){
 		o->update(grid_);
-	}
-}
-
-void GoL_Engine::kill_lowNeighbours(){
-	for (size_t i = 0; i < grid_.width(); ++i){
-		for (size_t j = 0; j < grid_.height(); ++j){
-			//Any live cell with fewer than two live neighbors dies, as if caused by under - population.
-			if (grid_(i, j).isAlive() && ::countAliveNeighbours(grid_.getNeighbouringCells(i, j)) < 2){
-				grid_(i, j).kill();
-			}
-		}
-	}
-}
-
-void GoL_Engine::live_2to3neighbours(){
-	for (size_t i = 0; i < grid_.width(); ++i){
-		for (size_t j = 0; j < grid_.height(); ++j){
-			//Any live cell with two or three live neighbors lives on to the next generation.
-			const auto cells_alive = ::countAliveNeighbours(grid_.getNeighbouringCells(i, j));
-			if (grid_(i, j).isAlive() && (cells_alive == 2 || cells_alive == 3)){
-				grid_(i, j).go_on();
-			}
-		}
-	}
-}
-
-void GoL_Engine::kill_highNeighbours(){
-	for (size_t i = 0; i < grid_.width(); ++i){
-		for (size_t j = 0; j < grid_.height(); ++j){
-			//Any live cell with more than three live neighbors dies, as if by overcrowding.
-			if (grid_(i, j).isAlive() && ::countAliveNeighbours(grid_.getNeighbouringCells(i, j)) > 3){
-				grid_(i, j).kill();
-			}
-		}
-	}
-}
-
-void GoL_Engine::resurect_highNeighbours(){
-	for (size_t i = 0; i < grid_.width(); ++i){
-		for (size_t j = 0; j < grid_.height(); ++j){
-			//Any dead cell with exactly three live neighbors becomes a live cell, as if by reproduction.
-			if (grid_(i, j).isDead() && ::countAliveNeighbours(grid_.getNeighbouringCells(i, j)) == 3){
-				grid_(i, j).resurect();
-			}
-		}
 	}
 }
 

@@ -13,23 +13,25 @@ public:
 		grid_(width, height)
 	{}
 
-	Cell const& operator()(size_t x, size_t y) const{
+	Cell const& operator()(int x, int y) const{
 		//Wrapping grid
-		return grid_(x % grid_.width(), y % grid_.height());
+		assert((x + grid_.width()) % grid_.width() >= 0 && (y + grid_.height()) % grid_.height() >= 0);
+		return grid_((x + grid_.width()) % grid_.width(), (y + grid_.height()) % grid_.height());
 	}
 
-	Cell& operator()(size_t x, size_t y){
+	Cell& operator()(int x, int y){
 		//Wrapping grid
-		return grid_(x % grid_.width(), y % grid_.height());
+		assert((x + grid_.width()) % grid_.width() >= 0 && (y + grid_.height()) % grid_.height() >= 0);
+		return grid_((x + grid_.width()) % grid_.width(), (y + grid_.height()) % grid_.height());
 	}
 
-	//Retour par copie.
+	//Retour par référence.
 	//On ne veut pas que les état change quand une modif est faite dans un autre thread
-	std::vector<Cell> getNeighbouringCells(size_t x, size_t y) const{
-		auto neighbouring_cells = std::vector<Cell>{};
-		for (size_t i = x - 1; i < x + 2; ++i){
-			for (size_t j = y - 1; j < y + 2; ++j){
-				neighbouring_cells.push_back(this->operator()(i, j));
+	std::vector<const Cell*> getNeighbouringCells(int x, int y) const{
+		auto neighbouring_cells = std::vector<const Cell*>{};
+		for (int i = x - 1; i < x + 2; ++i){
+			for (int j = y - 1; j < y + 2; ++j){
+				neighbouring_cells.push_back(&this->operator()(i, j));
 			}
 		}
 		return neighbouring_cells;

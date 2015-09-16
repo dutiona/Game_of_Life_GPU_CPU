@@ -41,5 +41,8 @@
     <ClInclude Include="src\GoL_Engine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\dllGameOfLife.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
