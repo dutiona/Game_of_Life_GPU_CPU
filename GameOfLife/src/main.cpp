@@ -11,8 +11,6 @@ int main(int /*argc*/, char* /*argv[]*/){
 	auto gol_engine = std::make_unique<GoL_Engine>(7, 7, 30, 1000); //2^6 = 64
 	gol_engine->init();
 
-
-
 	auto start = std::chrono::high_resolution_clock::now();
 	//std::cout << *gol_engine;
 	gol_engine->run(false);

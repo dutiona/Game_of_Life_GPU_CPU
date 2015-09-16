@@ -99,9 +99,6 @@ bool GoL_Engine::do_step(){
 		std::swap(grid_, grid_working_cpy);
 
 		++step_number_;
-		//if (step_number_ % 10 == 0){
-		//	std::cout << 0 << std::endl;
-		//}
 		return true;
 	}
 	else{
@@ -113,8 +110,6 @@ bool GoL_Engine::do_step(){
 bool GoL_Engine::do_step_multithreaded_omp(size_t thread_number){
 	if (step_number_ < max_step_){
 		auto grid_working_cpy = Grid{ grid_.width(), grid_.height() }; //Copie de travail
-
-		//assert(grid_.width() % thread_number == 0 && grid_.height() % thread_number == 0);
 
 		int i, j;
 		#pragma omp parallel for private(i)
@@ -148,9 +143,6 @@ bool GoL_Engine::do_step_multithreaded_omp(size_t thread_number){
 		std::swap(grid_, grid_working_cpy);
 
 		++step_number_;
-		//if (step_number_ % 10 == 0){
-		//	std::cout << step_number_ << std::endl;
-		//}
 		return true;
 	}
 	else{
@@ -161,8 +153,6 @@ bool GoL_Engine::do_step_multithreaded_omp(size_t thread_number){
 bool GoL_Engine::do_step_multithreaded(size_t thread_number){
 	if (step_number_ < max_step_){
 		auto grid_working_cpy = Grid{ grid_.width(), grid_.height() }; //Copie de travail
-
-		assert(grid_.width() % thread_number == 0 && grid_.height() % thread_number == 0);
 
 		const auto thread_functor_factory = [&](size_t start_width, size_t end_width, size_t start_height, size_t end_height) -> std::function<void(void)>{
 			return [&](){
@@ -211,9 +201,6 @@ bool GoL_Engine::do_step_multithreaded(size_t thread_number){
 		std::swap(grid_, grid_working_cpy);
 
 		++step_number_;
-		//if (step_number_ % 10 == 0){
-		//	std::cout << step_number_ << std::endl;
-		//}
 		return true;
 	}
 	else{
@@ -224,13 +211,13 @@ bool GoL_Engine::do_step_multithreaded(size_t thread_number){
 void GoL_Engine::run(bool multithreaded){
 	if (!multithreaded){
 		while (do_step());
-		//notifyObservers();
+			notifyObservers();
 	}
 	else{
 		const size_t thread_number = 8;
 		omp_set_num_threads(thread_number);
 		while (do_step_multithreaded_omp(thread_number));
-		//notifyObservers();
+			notifyObservers();
 	}
 }
 
