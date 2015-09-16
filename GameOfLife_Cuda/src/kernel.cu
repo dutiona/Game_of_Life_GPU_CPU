@@ -59,16 +59,19 @@ __host__ void printGrid(Grid& grid){
 	fprintf(stdout, "Grille %dx%d\n", grid.width, grid.height);
 	for (size_t i = 0; i < grid.width; ++i){
 		for (size_t j = 0; j < grid.height; ++j){
-			fprintf(stdout, "%d ", grid.grid[i*grid.width+j]);
+			fprintf(stdout, grid.grid[i*grid.width + j] ? "O" : "X");
 		}
 		fprintf(stdout, "\n");
 	}
 }
 
 int main(){
-	size_t nb_loop = 100;
-	size_t width = 2 * 2 * 2 * 2 * 2 * 2; //2^7
-	size_t height = 2 * 2 * 2 * 2 * 2 * 2; //2^7
+	clock_t begin, end;
+	double time_spent;
+
+	size_t nb_loop = 10000;
+	size_t width = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
+	size_t height = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
 	size_t fill_thresold = 30;
 
 	Grid cpu_grid;
@@ -83,13 +86,16 @@ int main(){
 	}
 
 	//Affichage
-	printGrid(cpu_grid);
+	//printGrid(cpu_grid);
 
 
 	Grid grid_const;
 	Grid grid_computed;
 	initGridCuda(grid_const, width, height);
 	initGridCuda(grid_computed, width, height);
+
+	//Start chrono
+	begin = clock();
 
 	CudaSafeCall(
 		cudaMemcpy(grid_const.grid,	cpu_grid.grid,
@@ -112,8 +118,12 @@ int main(){
 		cpu_grid.width*cpu_grid.height*sizeof(bool),
 		cudaMemcpyDeviceToHost));
 
+	end = clock();
+	time_spent = ((double)(end - begin) / CLOCKS_PER_SEC)*1000;
+	fprintf(stdout, "Execution time : %fms\n", time_spent);
+
 	//Affichage
-	printGrid(cpu_grid);
+	//printGrid(cpu_grid);
 
 	freeGrid(cpu_grid);
 	freeGridCuda(grid_const);
