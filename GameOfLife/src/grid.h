@@ -9,7 +9,7 @@ public:
 		grid_(0, 0) //Grille vide
 	{}
 
-	Grid(size_t width, size_t height) :
+	Grid(int width, int height) :
 		grid_(width, height)
 	{}
 
@@ -37,8 +37,8 @@ public:
 		return neighbouring_cells;
 	}
 
-	size_t width() const { return grid_.width(); }
-	size_t height() const { return grid_.height(); }
+	int width() const { return grid_.width(); }
+	int height() const { return grid_.height(); }
 
 private:
 	Matrix<Cell> grid_;

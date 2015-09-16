@@ -37,33 +37,33 @@
 
 
 struct complex {
-	float r;
-	float i;
-	__host__ __device__ complex(float a, float b) : r(a), i(b) {}
-	__host__ __device__ float magnitude2 (void) { return r * r + i * i;}
+	double r;
+	double i;
+	__host__ __device__ complex(double a, double b) : r(a), i(b) {}
+	__host__ __device__ double magnitude2 (void) { return r * r + i * i;}
 	__host__ __device__ complex operator*(const complex& a) { return complex(r*a.r - i*a.i, i*a.r + r*a.i); }
 	__host__ __device__ complex operator+(const complex& a) { return complex(r+a.r, i+a.i); }
 };
 
 GLuint imageTex;
 GLuint imageBuffer;
-float* debug;
+double* debug;
 struct cudaGraphicsResource* imageBuffer_CUDA;
 
 /* Globals */
 complex seed = complex(-0.8, 0.156);
-float scale = 0.003f;
+double scale = 0.003f;
 int precision = 100;
 int mode = GPU_MODE;
 int frame=0;
 int timebase=0;
 
-float4 *pixels, *cupixels;
-float *cuseedr, *cuseedi, *cuscale;
+double4 *pixels, *cupixels;
+double *cuseedr, *cuseedi, *cuscale;
 int *cuprecision;
 
 __host__ __device__
-void juliaColor(float4* pixel, float x, float y, float seedr, float seedi, int precision) {
+void juliaColor(double4* pixel, double x, double y, double seedr, double seedi, int precision) {
 	complex a(x, y);
 	complex seed(seedr,seedi);
 	pixel->z = 1.0f;
@@ -72,7 +72,7 @@ void juliaColor(float4* pixel, float x, float y, float seedr, float seedi, int p
 	for (i=0; i<precision; i++) {
 		a = a * a + seed;
 		if (a.magnitude2() > 4) {
-			float c = 1-i/(float)precision;
+			double c = 1-i/(double)precision;
 			pixel->x = c;
 			pixel->y = c;
 			return;
@@ -83,21 +83,21 @@ void juliaColor(float4* pixel, float x, float y, float seedr, float seedi, int p
 }
 
 __global__
-void juliaKernel(float4* pixel, float* seedr, float* seedi, int* precision, float* cuscale)
+void juliaKernel(double4* pixel, double* seedr, double* seedi, int* precision, double* cuscale)
 {
 	int i = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int j = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int index = j*SCREEN_X+i;
 	if (index<SCREEN_X*SCREEN_Y) {
-		float x = (float)(*cuscale*(i-SCREEN_X/2));
-		float y = (float)(*cuscale*(j-SCREEN_Y/2));
+		double x = (double)(*cuscale*(i-SCREEN_X/2));
+		double y = (double)(*cuscale*(j-SCREEN_Y/2));
 		juliaColor(pixel+index,x,y,*seedr,*seedi,*precision);
 	}
 }
 
 void initCPU()
 {
-	pixels = (float4*)malloc(SCREEN_X*SCREEN_Y*sizeof(float4));
+	pixels = (double4*)malloc(SCREEN_X*SCREEN_Y*sizeof(double4));
 }
 
 void cleanCPU()
@@ -108,12 +108,12 @@ void cleanCPU()
 
 void initGPU()
 {
-	cudaMalloc((void **)&cuseedr, sizeof(float));
-	cudaMalloc((void **)&cuseedi, sizeof(float));
-	cudaMalloc((void **)&cuscale, sizeof(float));
+	cudaMalloc((void **)&cuseedr, sizeof(double));
+	cudaMalloc((void **)&cuseedi, sizeof(double));
+	cudaMalloc((void **)&cuscale, sizeof(double));
 	cudaMalloc((void **)&cuprecision, sizeof(int));
-	cudaMalloc((void **)&cupixels, SCREEN_X*SCREEN_Y*sizeof(float4));
-	pixels = (float4*)malloc(SCREEN_X*SCREEN_Y*sizeof(float4));
+	cudaMalloc((void **)&cupixels, SCREEN_X*SCREEN_Y*sizeof(double4));
+	pixels = (double4*)malloc(SCREEN_X*SCREEN_Y*sizeof(double4));
 }
 
 void cleanGPU()
@@ -128,15 +128,15 @@ void cleanGPU()
 
 void initInterop()
 {
-	cudaMalloc((void **)&cuseedr, sizeof(float));
-	cudaMalloc((void **)&cuseedi, sizeof(float));
-	cudaMalloc((void **)&cuscale, sizeof(float));
+	cudaMalloc((void **)&cuseedr, sizeof(double));
+	cudaMalloc((void **)&cuseedi, sizeof(double));
+	cudaMalloc((void **)&cuscale, sizeof(double));
 	cudaMalloc((void **)&cuprecision, sizeof(int));
 
 	cudaGLSetGLDevice(0); // Explicitly set device 0
 	glGenBuffers(1, &imageBuffer); 
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imageBuffer);
-	glBufferData(GL_PIXEL_UNPACK_BUFFER, SCREEN_X * SCREEN_Y * sizeof(float4), 0, GL_DYNAMIC_COPY);
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, SCREEN_X * SCREEN_Y * sizeof(double4), 0, GL_DYNAMIC_COPY);
 	cudaGraphicsGLRegisterBuffer(&imageBuffer_CUDA,imageBuffer,cudaGraphicsMapFlagsWriteDiscard);
 
 	glEnable(GL_TEXTURE_2D); // Enable Texturing
@@ -165,9 +165,9 @@ void juliaInterop()
 	// http://www.scribd.com/doc/84859529/57/OpenGL-Interoperability p.49
 	// http://on-demand.gputechconf.com/gtc/2012/presentations/SS101B-Mixing-Graphics-Compute.pdf
 
-	cudaMemcpy(cuseedr, &seed.r, sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(cuseedi, &seed.i, sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(cuscale, &scale, sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(cuseedr, &seed.r, sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(cuseedi, &seed.i, sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(cuscale, &scale, sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(cuprecision, &precision, sizeof(int), cudaMemcpyHostToDevice);
 	
 	cudaGraphicsMapResources(1, &imageBuffer_CUDA, 0);
@@ -184,9 +184,9 @@ void juliaInterop()
 
 void juliaGPU()
 {
-	cudaMemcpy(cuseedr, &seed.r, sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(cuseedi, &seed.i, sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(cuscale, &scale, sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(cuseedr, &seed.r, sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(cuseedi, &seed.i, sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(cuscale, &scale, sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(cuprecision, &precision, sizeof(int), cudaMemcpyHostToDevice);
 	
 	dim3 threadsPerBlock(16, 16); // 256 threads
@@ -194,7 +194,7 @@ void juliaGPU()
 
 	juliaKernel<<<numBlocks,threadsPerBlock>>>(cupixels, cuseedr, cuseedi,  cuprecision, cuscale);
 
-	cudaMemcpy(pixels, cupixels, SCREEN_X*SCREEN_Y*sizeof(float4), cudaMemcpyDeviceToHost);	
+	cudaMemcpy(pixels, cupixels, SCREEN_X*SCREEN_Y*sizeof(double4), cudaMemcpyDeviceToHost);	
 }
 
 void juliaCPU()
@@ -203,8 +203,8 @@ void juliaCPU()
 	for (i=0;i<SCREEN_Y;i++)
 		for (j=0;j<SCREEN_X;j++)
 		{
-			float x = (float)(scale*(j-SCREEN_X/2));
-			float y = (float)(scale*(i-SCREEN_Y/2));
+			double x = (double)(scale*(j-SCREEN_X/2));
+			double y = (double)(scale*(i-SCREEN_Y/2));
 			juliaColor(pixels+(i*SCREEN_X+j),x,y,seed.r,seed.i,precision);
 		}
 }
@@ -222,7 +222,7 @@ void calcJulia() {
 			case GPU_MODE: m = "GPU"; break;
 			case INTEROP_MODE: m = "INTEROP"; break;
 		}
-		sprintf(t,"%s:  %s, %i loops, %.2f FPS",TITLE,m,precision,frame*1000/(float)(timecur-timebase));
+		sprintf(t,"%s:  %s, %i loops, %.2f FPS",TITLE,m,precision,frame*1000/(double)(timecur-timebase));
 		glutSetWindowTitle(t);
 	 	timebase = timecur;
 		frame = 0;
@@ -301,8 +301,8 @@ void mouse(int button, int state, int x, int y)
 {
 	if (button<=2) 
 	{
-		seed.r = (float)(scale*(x-SCREEN_X/2));
-		seed.i = -(float)(scale*(y-SCREEN_Y/2));
+		seed.r = (double)(scale*(x-SCREEN_X/2));
+		seed.i = -(double)(scale*(y-SCREEN_Y/2));
 	}
 	// Wheel reports as button 3 (scroll up) and button 4 (scroll down)
 	if (button == 3) scale /= 1.05f;
@@ -311,8 +311,8 @@ void mouse(int button, int state, int x, int y)
 
 void mouseMotion(int x, int y)
 {
-	seed.r = (float)(scale*(x-SCREEN_X/2));
-	seed.i = -(float)(scale*(y-SCREEN_Y/2));
+	seed.r = (double)(scale*(x-SCREEN_X/2));
+	seed.i = -(double)(scale*(y-SCREEN_Y/2));
 }
 
 void processNormalKeys(unsigned char key, int x, int y) {
