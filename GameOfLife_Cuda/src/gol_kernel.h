@@ -1,3 +1,5 @@
+#pragma once
+
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
@@ -51,6 +53,8 @@ __host__ void freeGrid(Grid& g);
 __host__ void freeGridCuda(Grid& g);
 
 __host__ void printGrid(Grid& grid);
+
+__host__ const Grid* do_step(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed);
 
 __device__ inline size_t countAliveNeighbours(size_t x, size_t y, const Grid& g);
 

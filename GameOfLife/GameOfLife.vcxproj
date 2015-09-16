@@ -26,7 +26,6 @@
   <ItemGroup>
     <ClInclude Include="src\cell.h" />
     <ClInclude Include="src\coord2D.h" />
-    <ClInclude Include="src\dllGameOfLife.h" />
     <ClInclude Include="src\GoL_Engine.h" />
     <ClInclude Include="src\grid.h" />
     <ClInclude Include="src\matrix.h" />

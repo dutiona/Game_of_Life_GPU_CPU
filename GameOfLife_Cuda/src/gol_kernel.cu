@@ -1,4 +1,4 @@
-#include "kernel.h"
+#include "gol_kernel.h"
 
 #include <time.h>
 
@@ -65,6 +65,15 @@ __host__ void printGrid(Grid& grid){
 	}
 }
 
+__host__ const Grid* do_step(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed){
+	gol_step_kernel <<< grid_size, block_size >>> (grid_const, grid_computed);
+	CudaCheckError();
+	auto tmp = grid_computed;
+	grid_computed = grid_const;
+	grid_const = tmp;
+	return &grid_const;
+}
+
 int main(){
 	clock_t begin, end;
 	double time_spent;
@@ -88,7 +97,6 @@ int main(){
 	//Affichage
 	//printGrid(cpu_grid);
 
-
 	Grid grid_const;
 	Grid grid_computed;
 	initGridCuda(grid_const, width, height);
@@ -99,18 +107,14 @@ int main(){
 
 	CudaSafeCall(
 		cudaMemcpy(grid_const.grid,	cpu_grid.grid,
-		cpu_grid.width*cpu_grid.height*sizeof(bool),
+		grid_const.width*grid_const.height*sizeof(bool),
 		cudaMemcpyHostToDevice));
 
 	dim3 grid_size = dim3(width / 8, height / 8);
 	dim3 block_size = dim3(8, 8);
 
 	for (int i = 0; i < nb_loop; ++i){
-		gol_step_kernel <<< grid_size, block_size >>> (grid_const, grid_computed);
-		CudaCheckError();
-		auto tmp = grid_computed;
-		grid_computed = grid_const;
-		grid_const = tmp;
+		do_step(grid_size, block_size, grid_const, grid_computed);
 	}
 
 	CudaSafeCall(

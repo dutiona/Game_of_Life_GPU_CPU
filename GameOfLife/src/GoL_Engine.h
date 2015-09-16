@@ -21,7 +21,9 @@ public:
 	void registerObserver(std::shared_ptr<const IObserver> o);
 
 	void init();
-	void run(bool multithreaded);
+	void run_serial();
+	void run_omp(size_t nb_thread);
+	void run_std_thread(size_t nb_thread);
 
 	bool allAlive() const;
 	bool allDead() const;
@@ -29,9 +31,9 @@ public:
 
 private:
 
-	bool do_step();
-	bool do_step_multithreaded(size_t thread_number);
-	bool do_step_multithreaded_omp(size_t thread_number);
+	const Grid* do_step();
+	const Grid* do_step_omp();
+	const Grid* do_step_std_thread(size_t nb_thread);
 
 	void kill_lowNeighbours();
 	void live_2to3neighbours();
