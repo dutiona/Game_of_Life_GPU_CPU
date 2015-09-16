@@ -65,6 +65,7 @@
     <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 6.5.props" />
     <Import Project="$(SolutionDir)GLEW_1_12_0.props" />
     <Import Project="$(SolutionDir)FREEGLUT_3_0_0.props" />
+	<Import Project="$(SolutionDir)OpenGL.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
