@@ -15,14 +15,9 @@ namespace{
 		//			++cell_alive;
 		//	}
 		//}
-		return grid(x - 1, y - 1).isAlive() +
-			grid(x - 1, y).isAlive() +
-			grid(x - 1, y + 1).isAlive() +
-			grid(x, y - 1).isAlive() +
-			grid(x, y + 1).isAlive() +
-			grid(x + 1, y - 1).isAlive() +
-			grid(x + 1, y).isAlive() +
-			grid(x + 1, y + 1).isAlive();
+		return grid(x - 1, y - 1).isAlive() + grid(x - 1, y).isAlive() + grid(x - 1, y + 1).isAlive() +
+			grid(x, y - 1).isAlive() + grid(x, y + 1).isAlive() +
+			grid(x + 1, y - 1).isAlive() + grid(x + 1, y).isAlive() + grid(x + 1, y + 1).isAlive();
 	}
 
 	inline size_t countDeadNeighbours(size_t x, size_t y, const Grid& grid){
