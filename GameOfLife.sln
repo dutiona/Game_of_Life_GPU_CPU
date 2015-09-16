@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GameOfLife", "GameOfLife\Ga
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GameOfLife_Cuda", "GameOfLife_Cuda\GameOfLife_Cuda.vcxproj", "{C78C1265-6579-43E1-A17C-B58161C183A9}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Appli1-Julia", "Appli1-Julia\Appli1-Julia.vcxproj", "{4E644D41-8E6B-4D6A-82CB-F6ABF38C3B25}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -31,6 +33,14 @@ Global
 		{C78C1265-6579-43E1-A17C-B58161C183A9}.Release|Win32.Build.0 = Release|Win32
 		{C78C1265-6579-43E1-A17C-B58161C183A9}.Release|x64.ActiveCfg = Release|x64
 		{C78C1265-6579-43E1-A17C-B58161C183A9}.Release|x64.Build.0 = Release|x64
+		{4E644D41-8E6B-4D6A-82CB-F6ABF38C3B25}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4E644D41-8E6B-4D6A-82CB-F6ABF38C3B25}.Debug|Win32.Build.0 = Debug|Win32
+		{4E644D41-8E6B-4D6A-82CB-F6ABF38C3B25}.Debug|x64.ActiveCfg = Debug|x64
+		{4E644D41-8E6B-4D6A-82CB-F6ABF38C3B25}.Debug|x64.Build.0 = Debug|x64
+		{4E644D41-8E6B-4D6A-82CB-F6ABF38C3B25}.Release|Win32.ActiveCfg = Release|Win32
+		{4E644D41-8E6B-4D6A-82CB-F6ABF38C3B25}.Release|Win32.Build.0 = Release|Win32
+		{4E644D41-8E6B-4D6A-82CB-F6ABF38C3B25}.Release|x64.ActiveCfg = Release|x64
+		{4E644D41-8E6B-4D6A-82CB-F6ABF38C3B25}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
