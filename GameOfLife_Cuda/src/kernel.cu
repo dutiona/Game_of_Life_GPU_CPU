@@ -1,102 +1,127 @@
+#include "kernel.h"
 
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
+#include <time.h>
 
-#include <stdio.h>
-#include <Windows.h>
-
-// Define this to turn on error checking
-#define CUDA_ERROR_CHECK
-
-#define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
-#define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
-
-inline void __cudaSafeCall( cudaError err, const char *file, const int line )
-{
-#ifdef CUDA_ERROR_CHECK
-	if ( cudaSuccess != err )
-	{
-		fprintf( stderr, "cudaSafeCall() failed at %s:%i : %s\n",
-			file, line, cudaGetErrorString( err ) );
-		exit( -1 );
-	}
-#endif
-
-	return;
+__host__ void initGrid(Grid& g, size_t w, size_t h){
+	g.width = w;
+	g.height = h;
+	g.grid = (bool*)malloc(w*h*sizeof(bool));
+}
+__host__ void initGridCuda(Grid& g, size_t w, size_t h){
+	g.width = w;
+	g.height = h;
+	CudaSafeCall(cudaMalloc(&g.grid, w*h*sizeof(bool)));
+}
+__host__ void freeGrid(Grid& g){
+	free(g.grid);
+}
+__host__ void freeGridCuda(Grid& g){
+	CudaSafeCall(cudaFree(g.grid));
 }
 
-inline void __cudaCheckError(const char *file, const int line)
-{
-#ifdef CUDA_ERROR_CHECK
-	cudaError err = cudaGetLastError();
-	if (cudaSuccess != err)
-	{
-		fprintf(stderr, "cudaCheckError() failed at %s:%i : %s\n",
-			file, line, cudaGetErrorString(err));
-		exit(-1);
-	}
-
-	// More careful checking. However, this will affect performance.
-	// Comment away if needed.
-	err = cudaDeviceSynchronize();
-	if (cudaSuccess != err)
-	{
-		fprintf(stderr, "cudaCheckError() with sync failed at %s:%i : %s\n",
-			file, line, cudaGetErrorString(err));
-		exit(-1);
-	}
-#endif
-
-	return;
+__device__ inline size_t countAliveNeighbours(size_t x, size_t y, const Grid& g){
+	size_t width = blockDim.x * gridDim.x;
+	size_t height = blockDim.y * gridDim.y;
+	int x_min_1 = ((x - 1) + width) % width;
+	int x_plus_1 = ((x + 1) + width) % width;
+	int y_min_1 = ((y - 1) + height) % height;
+	int y_plus_1 = ((y + 1) + height) % height;
+	return g.grid[x_min_1*g.width + y_min_1] + g.grid[x_min_1*g.width + y] + g.grid[x_min_1*g.width + y_plus_1] +
+		g.grid[x*g.width + (y - 1)] + g.grid[x*g.width + (y + 1)] +
+		g.grid[x_plus_1*g.width + y_min_1] + g.grid[x_plus_1*g.width + y] + g.grid[x_plus_1*g.width + y_plus_1];
 }
 
-
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
-
-__global__ void gol_step_kernel(bool *grid_start, bool* grid_tmp/*, size_t width, size_t height*/)
-{
-    size_t x = blockIdx.x*blockDim.x + threadIdx.x;
+__global__ void gol_step_kernel(const Grid grid_const, Grid grid_computed){
+	size_t x = blockIdx.x*blockDim.x + threadIdx.x;
 	size_t y = blockIdx.y*blockDim.y + threadIdx.y;
 
 	size_t width = blockDim.x * gridDim.x;
-	size_t height = blockDim.y * gridDim.y;
+	//size_t height = blockDim.y * gridDim.y;
 
 	//récupérer les voisins sur grid start
+	size_t cells_alive = countAliveNeighbours(x, y, grid_const);
 
-	//Mettre à jour létat en x,y sur grid_tmp
-
-    //c[i] = a[i] + b[i];
+	grid_computed.grid[x*width + y] =
+		(grid_const.grid[x*width + y] == 1) //alive
+		? (
+			(cells_alive < 2 || cells_alive > 3)
+			? false //kill
+			: grid_const.grid[x*width + y] //forward
+		)
+		: ( // dead
+			(cells_alive == 3)
+			? true //resurect
+			: grid_const.grid[x*width + y] //forward
+		);
 }
 
-int main()
-{
+__host__ void printGrid(Grid& grid){
+	fprintf(stdout, "Grille %dx%d\n", grid.width, grid.height);
+	for (size_t i = 0; i < grid.width; ++i){
+		for (size_t j = 0; j < grid.height; ++j){
+			fprintf(stdout, "%d ", grid.grid[i*grid.width+j]);
+		}
+		fprintf(stdout, "\n");
+	}
+}
+
+int main(){
 	size_t nb_loop = 100;
-	size_t width, height;
+	size_t width = 2 * 2 * 2 * 2 * 2 * 2; //2^7
+	size_t height = 2 * 2 * 2 * 2 * 2 * 2; //2^7
+	size_t fill_thresold = 30;
 
-	bool* _cpu_pointer,
+	Grid cpu_grid;
+	initGrid(cpu_grid, width, height);
 
-	bool* grid_const;
-	bool* grid_computed;
-	CudaSafeCall(cudaMalloc(&grid_const, width*height*sizeof(bool)));
-	CudaSafeCall(cudaMalloc(&grid_computed, width*height*sizeof(bool)));
+	//Random init
+	srand(time(NULL));
+	for (size_t i = 0; i < cpu_grid.width; ++i){
+		for (size_t j = 0; j < cpu_grid.height; ++j){
+			cpu_grid.grid[i*cpu_grid.width + j] = (rand() % 100 < fill_thresold);
+		}
+	}
 
-	CudaSafeCall(cudaMemcpy(grid_const, _cpu_pointer, width*height*sizeof(bool), cudaMemcpyHostToDevice));
+	//Affichage
+	printGrid(cpu_grid);
 
-	dim3 grid_size = dim3(width/8, height/8);
+
+	Grid grid_const;
+	Grid grid_computed;
+	initGridCuda(grid_const, width, height);
+	initGridCuda(grid_computed, width, height);
+
+	CudaSafeCall(
+		cudaMemcpy(grid_const.grid,	cpu_grid.grid,
+		cpu_grid.width*cpu_grid.height*sizeof(bool),
+		cudaMemcpyHostToDevice));
+
+	dim3 grid_size = dim3(width / 8, height / 8);
 	dim3 block_size = dim3(8, 8);
 
 	for (int i = 0; i < nb_loop; ++i){
 		gol_step_kernel <<< grid_size, block_size >>> (grid_const, grid_computed);
+		CudaCheckError();
 		auto tmp = grid_computed;
 		grid_computed = grid_const;
 		grid_const = tmp;
 	}
 
+	CudaSafeCall(
+		cudaMemcpy(cpu_grid.grid, grid_const.grid,
+		cpu_grid.width*cpu_grid.height*sizeof(bool),
+		cudaMemcpyDeviceToHost));
 
-	CudaSafeCall(cudaMemcpy(_cpu_pointer, grid_const, width*height*sizeof(bool), cudaMemcpyDeviceToHost));
+	//Affichage
+	printGrid(cpu_grid);
 
-	CudaSafeCall(cudaFree(grid_const));
-	CudaSafeCall(cudaFree(grid_computed));
+	freeGrid(cpu_grid);
+	freeGridCuda(grid_const);
+	freeGridCuda(grid_computed);
 
-    return 0;
+
+	system("PAUSE");
+
+
+	return EXIT_SUCCESS;
 }
