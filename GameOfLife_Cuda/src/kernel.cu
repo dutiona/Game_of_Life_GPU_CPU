@@ -42,7 +42,7 @@ __global__ void gol_step_kernel(const Grid grid_const, Grid grid_computed){
 	size_t cells_alive = countAliveNeighbours(x, y, grid_const);
 
 	grid_computed.grid[x*width + y] =
-		(grid_const.grid[x*width + y] == 1) //alive
+		(grid_const.grid[x*width + y]) //alive
 		? (
 			(cells_alive < 2 || cells_alive > 3)
 			? false //kill
