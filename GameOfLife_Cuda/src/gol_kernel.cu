@@ -1,5 +1,6 @@
 #include "gol_kernel.h"
 
+#include <Windows.h>
 #include <time.h>
 
 __host__ void initGrid(Grid& g, size_t w, size_t h){
@@ -74,7 +75,7 @@ __host__ const Grid* do_step(const dim3& grid_size, const dim3& block_size, Grid
 	return &grid_const;
 }
 
-int main(){
+int profile_kernel(){
 	clock_t begin, end;
 	double time_spent;
 

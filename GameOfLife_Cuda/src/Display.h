@@ -1,8 +1,11 @@
 #pragma once
 
 #include <vector>
+
+#define GLEW_STATIC
+
 #include <GL/glew.h>
-#include <gl/GLU.h>
+#include <GL/freeglut.h>
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 
@@ -75,7 +78,7 @@ public:
         void * dev_output_data_ptr;
         cudaGLMapBufferObject(&dev_output_data_ptr, buffer);
 
-        compute_image((float*)dev_input_data_ptr, x_size, y_size, (float*)dev_tmp_ptr, (unsigned char*)dev_output_data_ptr, x_output_size, y_output_size);
+        //compute_image((float*)dev_input_data_ptr, x_size, y_size, (float*)dev_tmp_ptr, (unsigned char*)dev_output_data_ptr, x_output_size, y_output_size);
 
         cudaGLUnmapBufferObject(buffer);
 

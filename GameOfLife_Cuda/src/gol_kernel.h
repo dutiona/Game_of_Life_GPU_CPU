@@ -4,10 +4,12 @@
 #include "device_launch_parameters.h"
 
 #include <stdio.h>
-#include <Windows.h>
+#include <stdlib.h>
 
 // Define this to turn on error checking
+#ifndef NDEBUG
 #define CUDA_ERROR_CHECK
+#endif
 
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
 #define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )

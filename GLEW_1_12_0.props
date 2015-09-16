@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <GLEW_DIR>$(SolutionDir)glew-1.12.0\</GLEW_DIR>
+	<GLEW_BIN_DIR_WIN32>$(GLEW_DIR)bin\Release\win32</GLEW_BIN_DIR_WIN32>
+	<GLEW_BIN_DIR_X64>$(GLEW_DIR)bin\Release\x64</GLEW_BIN_DIR_X64>
+	<GLEW_LIB_DIR_WIN32>$(GLEW_DIR)lib\Release\win32</GLEW_LIB_DIR_WIN32>
+	<GLEW_LIB_DIR_X64>$(GLEW_DIR)lib\Release\x64</GLEW_LIB_DIR_X64>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(GLEW_DIR)include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <BuildMacro Include="GLEW_DIR">
+      <Value>$(GLEW_DIR)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+	<BuildMacro Include="GLEW_BIN_DIR_WIN32">
+      <Value>$(GLEW_BIN_DIR_WIN32)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+	<BuildMacro Include="GLEW_BIN_DIR_X64">
+      <Value>$(GLEW_BIN_DIR_X64)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+	<BuildMacro Include="GLEW_LIB_DIR_WIN32">
+      <Value>$(GLEW_LIB_DIR_WIN32)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+	<BuildMacro Include="GLEW_LIB_DIR_X64">
+      <Value>$(GLEW_LIB_DIR_X64)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+  </ItemGroup>
+</Project>
