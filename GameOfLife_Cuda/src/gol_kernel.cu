@@ -56,6 +56,33 @@ __global__ void gol_step_kernel(const Grid grid_const, Grid grid_computed){
 		);
 }
 
+
+__global__ void gol_step_kernel_gl(const Grid grid_const, Grid grid_computed, unsigned char* colorBuffer, const char& color_true, const char& color_false){
+	size_t x = blockIdx.x*blockDim.x + threadIdx.x;
+	size_t y = blockIdx.y*blockDim.y + threadIdx.y;
+
+	size_t width = blockDim.x * gridDim.x;
+	//size_t height = blockDim.y * gridDim.y;
+
+	//récupérer les voisins sur grid start
+	size_t cells_alive = countAliveNeighbours(x, y, grid_const);
+
+	grid_computed.grid[x*width + y] =
+		(grid_const.grid[x*width + y]) //alive
+		? (
+			(cells_alive < 2 || cells_alive > 3)
+			? false //kill
+		: grid_const.grid[x*width + y] //forward
+		)
+		: ( // dead
+			(cells_alive == 3)
+			? true //resurect
+		: grid_const.grid[x*width + y] //forward
+		);
+
+	colorBuffer[x*width + y] = grid_computed.grid[x*width + y] ? color_true : color_false;
+}
+
 __host__ void printGrid(Grid& grid){
 	fprintf(stdout, "Grille %dx%d\n", grid.width, grid.height);
 	for (size_t i = 0; i < grid.width; ++i){
@@ -66,34 +93,23 @@ __host__ void printGrid(Grid& grid){
 	}
 }
 
-__host__ const Grid* do_step(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed){
+__host__ void do_step_gl(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed, unsigned char* colorBuffer, const char& color_true, const char& color_false){
+	gol_step_kernel_gl <<< grid_size, block_size >>> (grid_const, grid_computed, colorBuffer, color_true, color_false);
+	CudaCheckError();
+	auto tmp = grid_computed;
+	grid_computed = grid_const;
+	grid_const = tmp;
+}
+
+__host__ void do_step(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed){
 	gol_step_kernel <<< grid_size, block_size >>> (grid_const, grid_computed);
 	CudaCheckError();
 	auto tmp = grid_computed;
 	grid_computed = grid_const;
 	grid_const = tmp;
-	return &grid_const;
 }
 
-int profile_kernel(){
-	clock_t begin, end;
-	double time_spent;
-
-	size_t nb_loop = 10000;
-	size_t width = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
-	size_t height = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
-	size_t fill_thresold = 30;
-
-	Grid cpu_grid;
-	initGrid(cpu_grid, width, height);
-
-	//Random init
-	srand(time(NULL));
-	for (size_t i = 0; i < cpu_grid.width; ++i){
-		for (size_t j = 0; j < cpu_grid.height; ++j){
-			cpu_grid.grid[i*cpu_grid.width + j] = (rand() % 100 < fill_thresold);
-		}
-	}
+__host__ void launch_kernel(const Grid& cpu_grid, size_t nb_loop, size_t width, size_t height){
 
 	//Affichage
 	//printGrid(cpu_grid);
@@ -102,9 +118,6 @@ int profile_kernel(){
 	Grid grid_computed;
 	initGridCuda(grid_const, width, height);
 	initGridCuda(grid_computed, width, height);
-
-	//Start chrono
-	begin = clock();
 
 	CudaSafeCall(
 		cudaMemcpy(grid_const.grid,	cpu_grid.grid,
@@ -123,20 +136,9 @@ int profile_kernel(){
 		cpu_grid.width*cpu_grid.height*sizeof(bool),
 		cudaMemcpyDeviceToHost));
 
-	end = clock();
-	time_spent = ((double)(end - begin) / CLOCKS_PER_SEC)*1000;
-	fprintf(stdout, "Execution time : %fms\n", time_spent);
-
 	//Affichage
 	//printGrid(cpu_grid);
 
-	freeGrid(cpu_grid);
 	freeGridCuda(grid_const);
 	freeGridCuda(grid_computed);
-
-
-	system("PAUSE");
-
-
-	return EXIT_SUCCESS;
 }

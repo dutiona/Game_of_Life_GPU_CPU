@@ -48,16 +48,27 @@ typedef struct{
 	size_t height;
 	bool* grid;
 } Grid;
-
 __host__ void initGrid(Grid& g, size_t w, size_t h);
 __host__ void initGridCuda(Grid& g, size_t w, size_t h);
 __host__ void freeGrid(Grid& g);
 __host__ void freeGridCuda(Grid& g);
 
-__host__ void printGrid(Grid& grid);
 
-__host__ const Grid* do_step(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed);
+//To OpenGL display
+__host__ void do_step_gl(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed, unsigned char* colorBuffer, const char& color_true, const char& color_false);
+__global__ void gol_step_kernel_gl(const Grid grid_const, Grid grid_computed, float* colorBuffer, const char& color_true, const char& color_false);
 
-__device__ inline size_t countAliveNeighbours(size_t x, size_t y, const Grid& g);
 
+//To profile
+__host__ void do_step(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed);
 __global__ void gol_step_kernel(const Grid grid_const, Grid grid_computed);
+
+
+//Internal
+__device__ inline size_t countAliveNeighbours(size_t x, size_t y, const Grid& g);
+__host__ void printGrid(Grid& grid);
+__host__ void launch_kernel(const Grid& cpu_grid, size_t nb_loop, size_t width, size_t height);
+
+
+
+

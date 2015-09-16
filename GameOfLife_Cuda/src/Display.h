@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <random>
 
 #define GLEW_STATIC
 
@@ -9,44 +10,49 @@
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 
-void initTexture(int imageWidth, int imageHeight, unsigned char *h_data);
+#include "gol_kernel.h"
 
 class GLDisplay
 {
 public:
-    static void init(const float * data, const int x_size, const int y_size, const int x_output_size, const int y_output_size)
+    static void init(int* argc, char* argv[])
     {
-        float * local_data = (float*)malloc(x_size * y_size * sizeof(float));
+		//Cuda init
+		size_t nb_loop = 10000;
+		size_t width = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
+		size_t height = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
+		size_t fill_thresold = 30;
 
-        float max = 0.f;
+		Grid cpu_grid;
+		initGrid(cpu_grid, width, height);
 
-        for(int i = 0; i < x_size; i++)
-        {
-            for(int j = 0; j < y_size; j++)
-            {
-                int index = (x_size - 1 - i) * y_size + j;
+		//Random init
+		const auto seed = std::random_device{}(); //seed ne dépend pas de std::chrono
+		std::mt19937 rd_mt_engine(seed); // mt19937 est le mersenne_twister_engine standard
+		std::uniform_int_distribution<int> uniform_distrib(1, 100); // distribution 1 à 100 uniforme
 
-                local_data[index] = data[i * y_size + j];
-                if(local_data[index] > max)
-                    max = local_data[index];
-            }
-        }
+		for (size_t i = 0; i < cpu_grid.width; ++i){
+			for (size_t j = 0; j < cpu_grid.height; ++j){
+				//Remplissage aléatoire de la grille en fonction du fill_thresold
+				cpu_grid.grid[i*cpu_grid.width + j] = uniform_distrib(rd_mt_engine) < fill_thresold;
+			}
+		}
 
-        for(int i = 0; i < x_size; i++)
-        {
-            for(int j = 0; j < y_size; j++)
-            {
-                int index = (x_size - 1 - i) * y_size + j;
-                local_data[index] /= max;
-            }
-        }
+		Grid grid_const;
+		Grid grid_computed;
+		initGridCuda(grid_const, width, height);
+		initGridCuda(grid_computed, width, height);
 
-        void * dev_input_data_ptr;
-        void * dev_tmp_ptr;
-        cudaMalloc(&dev_input_data_ptr, x_size * y_size * sizeof(float));
-        cudaMalloc(&dev_tmp_ptr, x_output_size * y_output_size * sizeof(float));
-        cudaMemcpy(dev_input_data_ptr, local_data, x_size * y_size * sizeof(float), cudaMemcpyHostToDevice);
+		CudaSafeCall(
+			cudaMemcpy(grid_const.grid, cpu_grid.grid,
+			grid_const.width*grid_const.height*sizeof(bool),
+			cudaMemcpyHostToDevice));
 
+		dim3 grid_size = dim3(width / 8, height / 8);
+		dim3 block_size = dim3(8, 8);
+
+		//OpenGL init
+		glutInit(argc, argv);
         glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
         glutInitWindowSize(win_width, win_height);
         glutCreateWindow("Résultats de champ");
@@ -59,7 +65,7 @@ public:
         glewInit();
         glGenBuffers(1, &buffer);
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, buffer);
-        glBufferData(GL_PIXEL_UNPACK_BUFFER, x_output_size * y_output_size * 3, NULL, GL_DYNAMIC_COPY);
+        glBufferData(GL_PIXEL_UNPACK_BUFFER, cpu_grid.width * cpu_grid.height * 3, NULL, GL_DYNAMIC_COPY);
         cudaGLRegisterBufferObject(buffer);
 
         glGenTextures(1, &texture);
@@ -72,20 +78,32 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x_output_size, y_output_size, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, cpu_grid.width, cpu_grid.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
 
-        void * dev_output_data_ptr;
-        cudaGLMapBufferObject(&dev_output_data_ptr, buffer);
+        void* color_buffer;
+		cudaGLMapBufferObject(&color_buffer, buffer);
 
-        //compute_image((float*)dev_input_data_ptr, x_size, y_size, (float*)dev_tmp_ptr, (unsigned char*)dev_output_data_ptr, x_output_size, y_output_size);
+		//Compute pixels
+		for (int i = 0; i < nb_loop; ++i){
+			do_step_gl(grid_size, block_size, grid_const, grid_computed, (unsigned char*)color_buffer, 255, 0);
+		}
+
+		CudaSafeCall(
+			cudaMemcpy(cpu_grid.grid, grid_const.grid,
+			cpu_grid.width*cpu_grid.height*sizeof(bool),
+			cudaMemcpyDeviceToHost));
+
+		freeGrid(cpu_grid);
+		freeGridCuda(grid_const);
+		freeGridCuda(grid_computed);
+
 
         cudaGLUnmapBufferObject(buffer);
 
-
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, buffer);
         glBindTexture(GL_TEXTURE_2D, texture);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, x_output_size, y_output_size, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, cpu_grid.width, cpu_grid.height, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     };
 
     static void run()
