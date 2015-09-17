@@ -48,11 +48,11 @@ __host__ bool gridAreEquals(const Grid& glhs, const Grid& grhs){
 
 
 __global__ void gol_step_kernel(Grid grid_const, Grid grid_computed){
-	size_t x = blockIdx.x*blockDim.x + threadIdx.x;
-	size_t y = blockIdx.y*blockDim.y + threadIdx.y;
+	int x = blockIdx.x*blockDim.x + threadIdx.x;
+	int y = blockIdx.y*blockDim.y + threadIdx.y;
 
-	size_t width = blockDim.x * gridDim.x;
-	size_t height = blockDim.y * gridDim.y;
+	int width = blockDim.x * gridDim.x;
+	int height = blockDim.y * gridDim.y;
 
 	//récupérer les voisins sur grid start
 	int x_min_1 = ((x - 1) + width) % width;
@@ -218,10 +218,37 @@ __host__ void launch_kernel_shared(const Grid& cpu_grid, size_t nb_loop, unsigne
 
 //OpenGL
 
-__host__ void do_step_gl(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed, unsigned char* colorBuffer, const char& color_true, const char& color_false){
-	gol_step_kernel_shared <<< grid_size, block_size >>> (grid_const, grid_computed);
+
+__global__ void gol_step_kernel_gl(Grid grid_const, float4* grid_pixels, float4 color_true, float4 color_false){
+
+	int x = blockIdx.x*blockDim.x + threadIdx.x;
+	int y = blockIdx.y*blockDim.y + threadIdx.y;
+	int width = blockDim.x * gridDim.x;
+	int height = blockDim.y * gridDim.y;
+
+	int pnt = x*width + y;
+
+
+	if (pnt >= width*height){
+		int pnt2 = pnt;
+		int x2 = x;
+		int y2 = y;
+		return;
+	}
+
+	grid_pixels[pnt] = color_true;
+}
+
+
+__host__ void do_step_gl(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed, float4* grid_pixels, float4 color_true, float4 color_false, int screen_x, int screen_y){
+	dim3 block_size_extended = dim3(block_size.x + 2, block_size.y + 2);
+	gol_step_kernel_shared <<< grid_size, block_size_extended, (block_size_extended.x) * (block_size_extended.y) * sizeof(bool) >>> (grid_const, grid_computed);
 	CudaCheckError();
 	auto tmp = grid_computed;
 	grid_computed = grid_const;
 	grid_const = tmp;
+
+	dim3 grid_size_screen = dim3(screen_x / 8, screen_y / 8);
+	gol_step_kernel_gl <<< grid_size_screen, block_size >>> (grid_const, grid_pixels, color_true, color_false);
+	CudaCheckError();
 }

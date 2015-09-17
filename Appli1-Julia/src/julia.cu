@@ -58,12 +58,12 @@ int mode = GPU_MODE;
 int frame=0;
 int timebase=0;
 
-double4 *pixels, *cupixels;
+float4 *pixels, *cupixels;
 double *cuseedr, *cuseedi, *cuscale;
 int *cuprecision;
 
 __host__ __device__
-void juliaColor(double4* pixel, double x, double y, double seedr, double seedi, int precision) {
+void juliaColor(float4* pixel, double x, double y, double seedr, double seedi, int precision) {
 	complex a(x, y);
 	complex seed(seedr,seedi);
 	pixel->z = 1.0f;
@@ -83,7 +83,7 @@ void juliaColor(double4* pixel, double x, double y, double seedr, double seedi, 
 }
 
 __global__
-void juliaKernel(double4* pixel, double* seedr, double* seedi, int* precision, double* cuscale)
+void juliaKernel(float4* pixel, double* seedr, double* seedi, int* precision, double* cuscale)
 {
 	int i = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int j = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -97,7 +97,7 @@ void juliaKernel(double4* pixel, double* seedr, double* seedi, int* precision, d
 
 void initCPU()
 {
-	pixels = (double4*)malloc(SCREEN_X*SCREEN_Y*sizeof(double4));
+	pixels = (float4*)malloc(SCREEN_X*SCREEN_Y*sizeof(float4));
 }
 
 void cleanCPU()
@@ -112,8 +112,8 @@ void initGPU()
 	cudaMalloc((void **)&cuseedi, sizeof(double));
 	cudaMalloc((void **)&cuscale, sizeof(double));
 	cudaMalloc((void **)&cuprecision, sizeof(int));
-	cudaMalloc((void **)&cupixels, SCREEN_X*SCREEN_Y*sizeof(double4));
-	pixels = (double4*)malloc(SCREEN_X*SCREEN_Y*sizeof(double4));
+	cudaMalloc((void **)&cupixels, SCREEN_X*SCREEN_Y*sizeof(float4));
+	pixels = (float4*)malloc(SCREEN_X*SCREEN_Y*sizeof(float4));
 }
 
 void cleanGPU()
@@ -133,10 +133,10 @@ void initInterop()
 	cudaMalloc((void **)&cuscale, sizeof(double));
 	cudaMalloc((void **)&cuprecision, sizeof(int));
 
-	cudaGLSetGLDevice(0); // Explicitly set device 0
+	//cudaGLSetGLDevice(0); // Explicitly set device 0
 	glGenBuffers(1, &imageBuffer); 
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imageBuffer);
-	glBufferData(GL_PIXEL_UNPACK_BUFFER, SCREEN_X * SCREEN_Y * sizeof(double4), 0, GL_DYNAMIC_COPY);
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, SCREEN_X * SCREEN_Y * sizeof(float4), 0, GL_DYNAMIC_COPY);
 	cudaGraphicsGLRegisterBuffer(&imageBuffer_CUDA,imageBuffer,cudaGraphicsMapFlagsWriteDiscard);
 
 	glEnable(GL_TEXTURE_2D); // Enable Texturing
@@ -194,7 +194,7 @@ void juliaGPU()
 
 	juliaKernel<<<numBlocks,threadsPerBlock>>>(cupixels, cuseedr, cuseedi,  cuprecision, cuscale);
 
-	cudaMemcpy(pixels, cupixels, SCREEN_X*SCREEN_Y*sizeof(double4), cudaMemcpyDeviceToHost);	
+	cudaMemcpy(pixels, cupixels, SCREEN_X*SCREEN_Y*sizeof(float4), cudaMemcpyDeviceToHost);	
 }
 
 void juliaCPU()
@@ -358,7 +358,7 @@ int main(int argc, char **argv) {
 	initGL(argc, argv);
 
 	init();
-	toggleMode(GPU_MODE);
+	//toggleMode(GPU_MODE);
 
 	glutDisplayFunc(renderJulia);
 	glutIdleFunc(idleJulia);

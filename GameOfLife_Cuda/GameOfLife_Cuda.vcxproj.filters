@@ -12,10 +12,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\Display.h">
+    <ClInclude Include="src\gol_kernel.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\gol_kernel.cuh">
+    <ClInclude Include="src\Display.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

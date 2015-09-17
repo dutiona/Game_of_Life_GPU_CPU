@@ -69,6 +69,10 @@ __host__ void do_step_shared(const dim3& grid_size, const dim3& block_size, Grid
 __global__ void gol_step_kernel_shared(Grid grid_const, Grid grid_computed);
 __host__ void launch_kernel_shared(const Grid& cpu_grid, size_t nb_loop, unsigned int width, unsigned int height);
 
+//OpenGl
+__host__ void do_step_gl(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed, float4* grid_pixels, float4 color_true, float4 color_false, int screen_x, int screen_y);
+__global__ void gol_step_kernel_gl(Grid grid_const, float4* grid_pixels, float4 color_true, float4 color_false);
+
 //Internal
 __host__ void printGrid(Grid& grid);
 __host__ bool gridAreEquals(const Grid& glhs, const Grid& grhs);
