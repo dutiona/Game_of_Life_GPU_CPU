@@ -22,18 +22,6 @@ __host__ void freeGridCuda(Grid& g){
 	CudaSafeCall(cudaFree(g.grid));
 }
 
-__device__ inline size_t countAliveNeighbours(unsigned int x, unsigned int y, Grid* g){
-	unsigned int width = blockDim.x * gridDim.x;
-	unsigned int height = blockDim.y * gridDim.y;
-	int x_min_1 = ((x - 1) + width) % width;
-	int y_min_1 = ((y - 1) + height) % height;
-	int x_plus_1 = ((x + 1) + width) % width;
-	int y_plus_1 = ((y + 1) + height) % height;
-	return g->grid[x_min_1*width + y_min_1] + g->grid[x_min_1*width + y] + g->grid[x_min_1*width + y_plus_1] +
-		g->grid[x*width + y_min_1] + g->grid[x*width + y_plus_1] +
-		g->grid[x_plus_1*width + y_min_1] + g->grid[x_plus_1*width + y] + g->grid[x_plus_1*width + y_plus_1];
-}
-
 __host__ void printGrid(Grid& grid){
 	fprintf(stdout, "Grille %dx%d\n", grid.width, grid.height);
 	for (size_t i = 0; i < grid.width; ++i){
@@ -44,6 +32,18 @@ __host__ void printGrid(Grid& grid){
 	}
 }
 
+__host__ bool gridAreEquals(const Grid& glhs, const Grid& grhs){
+	for (int i = 0; i < glhs.width; ++i){
+		for (int j = 0; j < grhs.height; ++j){
+			if (glhs.grid[i*glhs.width + j] != grhs.grid[i*glhs.width + j]){
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+
 //Global
 
 
@@ -52,10 +52,17 @@ __global__ void gol_step_kernel(Grid grid_const, Grid grid_computed){
 	size_t y = blockIdx.y*blockDim.y + threadIdx.y;
 
 	size_t width = blockDim.x * gridDim.x;
-	//size_t height = blockDim.y * gridDim.y;
+	size_t height = blockDim.y * gridDim.y;
 
 	//récupérer les voisins sur grid start
-	size_t cells_alive = countAliveNeighbours(x, y, &grid_const);
+	int x_min_1 = ((x - 1) + width) % width;
+	int y_min_1 = ((y - 1) + height) % height;
+	int x_plus_1 = ((x + 1) + width) % width;
+	int y_plus_1 = ((y + 1) + height) % height;
+	size_t cells_alive =
+		grid_const.grid[x_min_1*width + y_min_1] + grid_const.grid[x_min_1*width + y] + grid_const.grid[x_min_1*width + y_plus_1] +
+		grid_const.grid[x*width + y_min_1] + grid_const.grid[x*width + y_plus_1] +
+		grid_const.grid[x_plus_1*width + y_min_1] + grid_const.grid[x_plus_1*width + y] + grid_const.grid[x_plus_1*width + y_plus_1];
 
 	grid_computed.grid[x*width + y] =
 		(grid_const.grid[x*width + y]) //alive
@@ -144,7 +151,7 @@ __global__ void gol_step_kernel_shared(const Grid grid_const, Grid grid_computed
 	if (x != 0 && y != 0 && x != blockDim.x - 1 && y != blockDim.y - 1){
 
 		//récupérer les voisins sur grid start
-		int cells_alive =
+		size_t cells_alive =
 			grid_[(x - 1)*blockDim.y + (y - 1)] + grid_[(x - 1)*blockDim.y + y] + grid_[(x - 1)*blockDim.y + (y + 1)] +
 			grid_[x*blockDim.y + (y - 1)] + grid_[x*blockDim.y + (y + 1)] +
 			grid_[(x + 1)*blockDim.y + (y - 1)] + grid_[(x + 1)*blockDim.y + y] + grid_[(x + 1)*blockDim.y + (y + 1)];
@@ -162,7 +169,6 @@ __global__ void gol_step_kernel_shared(const Grid grid_const, Grid grid_computed
 				: grid_[pnt] //forward
 			);
 	}
-	
 }
 
 __host__ void do_step_shared(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed){
@@ -212,35 +218,8 @@ __host__ void launch_kernel_shared(const Grid& cpu_grid, size_t nb_loop, unsigne
 
 //OpenGL
 
-__global__ void gol_step_kernel_gl(Grid grid_const, Grid grid_computed, unsigned char* colorBuffer, const char& color_true, const char& color_false){
-
-	size_t x = blockIdx.x*blockDim.x + threadIdx.x;
-	size_t y = blockIdx.y*blockDim.y + threadIdx.y;
-
-	size_t width = blockDim.x * gridDim.x;
-	//size_t height = blockDim.y * gridDim.y;
-
-	//récupérer les voisins sur grid start
-	size_t cells_alive = countAliveNeighbours(x, y, &grid_const);
-
-	grid_computed.grid[x*width + y] =
-		(grid_const.grid[x*width + y]) //alive
-		? (
-			(cells_alive < 2 || cells_alive > 3)
-			? false //kill
-			: grid_const.grid[x*width + y] //forward
-		)
-		: ( // dead
-			(cells_alive == 3)
-			? true //resurect
-			: grid_const.grid[x*width + y] //forward
-		);
-
-	colorBuffer[x*width + y] = grid_computed.grid[x*width + y] ? color_true : color_false;
-}
-
 __host__ void do_step_gl(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed, unsigned char* colorBuffer, const char& color_true, const char& color_false){
-	gol_step_kernel_gl << < grid_size, block_size >> > (grid_const, grid_computed, colorBuffer, color_true, color_false);
+	gol_step_kernel_shared <<< grid_size, block_size >>> (grid_const, grid_computed);
 	CudaCheckError();
 	auto tmp = grid_computed;
 	grid_computed = grid_const;

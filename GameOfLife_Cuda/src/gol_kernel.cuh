@@ -70,9 +70,8 @@ __global__ void gol_step_kernel_shared(Grid grid_const, Grid grid_computed);
 __host__ void launch_kernel_shared(const Grid& cpu_grid, size_t nb_loop, unsigned int width, unsigned int height);
 
 //Internal
-__device__ inline size_t countAliveNeighbours(unsigned int x, unsigned int y, Grid* g);
 __host__ void printGrid(Grid& grid);
-
+__host__ bool gridAreEquals(const Grid& glhs, const Grid& grhs);
 
 
 
