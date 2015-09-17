@@ -226,15 +226,7 @@ __global__ void gol_step_kernel_gl(Grid grid_const, float4* grid_pixels, float4 
 	int width = blockDim.x * gridDim.x;
 	int height = blockDim.y * gridDim.y;
 
-	int pnt = x*width + y;
-
-
-	if (pnt >= width*height){
-		int pnt2 = pnt;
-		int x2 = x;
-		int y2 = y;
-		return;
-	}
+	int pnt = x*gridDim.x + y;
 
 	grid_pixels[pnt] = color_true;
 }
