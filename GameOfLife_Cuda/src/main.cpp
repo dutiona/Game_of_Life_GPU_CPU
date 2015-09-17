@@ -1,4 +1,4 @@
-#include "gol_kernel.h"
+#include "gol_kernel.cuh"
 #include "Display.h"
 
 #include <iostream>
@@ -11,13 +11,13 @@ int main(int argc, char* argv[]){
 	//GLDisplay::run();
 
 	size_t nb_loop = 10000;
-	unsigned int width = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
-	unsigned int height = 2 * 2 * 2 * 2 * 2 * 2 * 2; //2^7
+	unsigned int width = 16 * 8 * 2; //2^7
+	unsigned int height = 16 * 8 * 2; //2^7
 	int fill_thresold = 30;
 	Grid cpu_grid;
 
 	//Global
-
+	
 	initGrid(cpu_grid, width, height);
 	//Random init
 	const auto seed = std::random_device{}(); //seed ne dépend pas de std::chrono
@@ -50,6 +50,8 @@ int main(int argc, char* argv[]){
 	launch_kernel_shared(cpu_grid, nb_loop, width, height);
 	const auto elapsed_shared = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::high_resolution_clock::now() - start_shared)).count());
 	std::cout << elapsed_shared << "ms" << std::endl;
+
+	std::cout << "Accelerating factor : " << (elapsed_global / elapsed_shared) << std::endl;
 
 	//Pause
 	std::cout << "Entrez sur enter pour continuer..." << std::endl;
