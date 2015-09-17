@@ -59,18 +59,21 @@ __host__ void do_step_gl(const dim3& grid_size, const dim3& block_size, Grid& gr
 __global__ void gol_step_kernel_gl(const Grid grid_const, Grid grid_computed, float* colorBuffer, const char& color_true, const char& color_false);
 
 
-//To profile
+//Global
 __host__ void do_step(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed);
 __global__ void gol_step_kernel(const Grid grid_const, Grid grid_computed);
+__host__ void launch_kernel(const Grid& cpu_grid, size_t nb_loop, unsigned int width, unsigned int height);
 
-//To profile
+//Shared
 __host__ void do_step_shared(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed);
 __global__ void gol_step_kernel_shared(const Grid grid_const, Grid grid_computed);
+__host__ void launch_kernel_shared(const Grid& cpu_grid, size_t nb_loop, unsigned int width, unsigned int height);
 
 //Internal
 __device__ inline size_t countAliveNeighbours(unsigned int x, unsigned int y, const Grid& g);
 __host__ void printGrid(Grid& grid);
-__host__ void launch_kernel(const Grid& cpu_grid, size_t nb_loop, unsigned int width, unsigned int height);
+
+
 
 
 
