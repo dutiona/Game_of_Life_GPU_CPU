@@ -63,6 +63,9 @@ __global__ void gol_step_kernel_gl(const Grid grid_const, Grid grid_computed, fl
 __host__ void do_step(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed);
 __global__ void gol_step_kernel(const Grid grid_const, Grid grid_computed);
 
+//To profile
+__host__ void do_step_shared(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed);
+__global__ void gol_step_kernel_shared(const Grid grid_const, Grid grid_computed);
 
 //Internal
 __device__ inline size_t countAliveNeighbours(unsigned int x, unsigned int y, const Grid& g);
