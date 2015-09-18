@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <FREEGLUT_DIR>$(SolutionDir)Freeglut-3.0.0\</FREEGLUT_DIR>
+	<FREEGLUT_BIN_DIR_WIN32>$(FREEGLUT_DIR)bin\win32</FREEGLUT_BIN_DIR_WIN32>
+	<FREEGLUT_BIN_DIR_X64>$(FREEGLUT_DIR)bin\x64</FREEGLUT_BIN_DIR_X64>
+	<FREEGLUT_LIB_DIR_WIN32>$(FREEGLUT_DIR)lib\win32</FREEGLUT_LIB_DIR_WIN32>
+	<FREEGLUT_LIB_DIR_X64>$(FREEGLUT_DIR)lib\x64</FREEGLUT_LIB_DIR_X64>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(FREEGLUT_DIR)include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <BuildMacro Include="FREEGLUT_DIR">
+      <Value>$(FREEGLUT_DIR)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+	<BuildMacro Include="FREEGLUT_BIN_DIR_WIN32">
+      <Value>$(FREEGLUT_BIN_DIR_WIN32)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+	<BuildMacro Include="FREEGLUT_BIN_DIR_X64">
+      <Value>$(FREEGLUT_BIN_DIR_X64)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+	<BuildMacro Include="FREEGLUT_LIB_DIR_WIN32">
+      <Value>$(FREEGLUT_LIB_DIR_WIN32)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+	<BuildMacro Include="FREEGLUT_LIB_DIR_X64">
+      <Value>$(FREEGLUT_LIB_DIR_X64)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+  </ItemGroup>
+</Project>
