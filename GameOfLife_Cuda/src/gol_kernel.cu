@@ -24,8 +24,8 @@ __host__ void freeGridCuda(Grid& g){
 
 __host__ void printGrid(Grid& grid){
 	fprintf(stdout, "Grille %dx%d\n", grid.width, grid.height);
-	for (size_t i = 0; i < grid.width; ++i){
-		for (size_t j = 0; j < grid.height; ++j){
+	for (int i = 0; i < grid.width; ++i){
+		for (int j = 0; j < grid.height; ++j){
 			fprintf(stdout, grid.grid[i*grid.width + j] ? "O" : "X");
 		}
 		fprintf(stdout, "\n");

@@ -139,7 +139,7 @@ private:
 		if (timecur - timebase_ > 500) {
 			char t[200];
 			char* m = "";
-			sprintf(t, "%s:  %s, %s mode, (%.2f) FPS", "Game of Life", m, interop_ ? "interop" : "gpu", frame_ * 1000 / (double)(timecur - timebase_));
+			sprintf_s(t, "%s:  %s, %s mode, (%.2f) FPS", "Game of Life", m, interop_ ? "interop" : "gpu", frame_ * 1000 / (double)(timecur - timebase_));
 			glutSetWindowTitle(t);
 			timebase_ = timecur;
 			frame_ = 0;

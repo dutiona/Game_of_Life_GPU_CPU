@@ -44,8 +44,8 @@ inline void __cudaCheckError(const char *file, const int line){
 }
 
 typedef struct{
-	unsigned int width;
-	unsigned int height;
+	int width;
+	int height;
 	bool* grid;
 } Grid;
 __host__ void initGrid(Grid& g, unsigned int w, unsigned int h);
