@@ -10,7 +10,7 @@
 int main(int argc, char* argv[]){
 
 	//true : affichage openGL, false profiling des kernels
-	const bool openGL = true;
+	const bool openGL = false;
 
 	if (openGL){
 		GLDisplay::init(&argc, argv);
@@ -19,8 +19,8 @@ int main(int argc, char* argv[]){
 	else{
 
 		size_t nb_loop = 1000; //Nombre de loop dans la simulation
-		unsigned int width = 8 * 8 * 8 * 2; //2^10
-		unsigned int height = 8 * 8 * 8 * 2; //2^10
+		unsigned int width = 8 * 8 * 4; //2^8
+		unsigned int height = 8 * 8 * 4; //2^8
 		int fill_thresold = 70;
 		Grid cpu_grid_global, cpu_grid_shared;
 
