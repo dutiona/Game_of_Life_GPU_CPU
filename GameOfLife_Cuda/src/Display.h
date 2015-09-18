@@ -50,8 +50,7 @@ public:
 			for (unsigned int i = 0; i < grid_width_; ++i){
 				for (unsigned int j = 0; j < grid_width_; ++j){
 					//Remplissage aléatoire de la grille en fonction du fill_thresold
-					const auto v = uniform_distrib(rd_mt_engine) < fill_thresold_;
-					cpu_grid_shared_.grid[i*cpu_grid_shared_.width + j] = v;
+					cpu_grid_shared_.grid[i*cpu_grid_shared_.width + j] = uniform_distrib(rd_mt_engine) < fill_thresold_;
 				}
 			}
 			CudaSafeCall(
