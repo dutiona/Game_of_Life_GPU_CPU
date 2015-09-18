@@ -219,28 +219,62 @@ __host__ void launch_kernel_shared(const Grid& cpu_grid, size_t nb_loop, unsigne
 //OpenGL
 
 
-__global__ void gol_step_kernel_gl(Grid grid_const, float4* grid_pixels, float4 color_true, float4 color_false){
+__global__ void gol_step_kernel_shared_gl(const Grid grid_const, Grid grid_computed, float4* grid_pixels, float4 color_true, float4 color_false){
+	extern __shared__ bool grid_[];
 
-	int x = blockIdx.x*blockDim.x + threadIdx.x;
-	int y = blockIdx.y*blockDim.y + threadIdx.y;
-	int width = blockDim.x * gridDim.x;
-	int height = blockDim.y * gridDim.y;
+	//Taille de la mémoire globale
+	int width = (blockDim.x - 2) * gridDim.x;
+	int height = (blockDim.y - 2) * gridDim.y;
 
-	int pnt = x*gridDim.x + y;
+	//Coordonnées dans la grid memory shared
+	int x = threadIdx.x;
+	int y = threadIdx.y;
+	int pnt = x*blockDim.y + y;
 
-	grid_pixels[pnt] = color_true;
+	//Calcul de la correspondance dans la global
+	//On fait -1 sur x,y pour être en négatif sur les bords puis on réaditionne et on module
+	int x_from = (blockIdx.x*(blockDim.x - 2) + x - 1 + width) % width;
+	int y_from = (blockIdx.y*(blockDim.y - 2) + y - 1 + height) % height;
+	int pnt_from = x_from*height + y_from;
+
+	//On charge la donnée dans la shared
+	grid_[pnt] = grid_const.grid[pnt_from];
+
+	//On charge le block dans la shared
+	__syncthreads();
+
+	//Ces thread sont IDLE, ils ne servent qu'à charger la shared pour la  lecture
+	if (x != 0 && y != 0 && x != blockDim.x - 1 && y != blockDim.y - 1){
+
+		//récupérer les voisins sur grid start
+		size_t cells_alive =
+			grid_[(x - 1)*blockDim.y + (y - 1)] + grid_[(x - 1)*blockDim.y + y] + grid_[(x - 1)*blockDim.y + (y + 1)] +
+			grid_[x*blockDim.y + (y - 1)] + grid_[x*blockDim.y + (y + 1)] +
+			grid_[(x + 1)*blockDim.y + (y - 1)] + grid_[(x + 1)*blockDim.y + y] + grid_[(x + 1)*blockDim.y + (y + 1)];
+
+		bool state = 
+			(grid_[pnt]) //alive
+			? (
+				(cells_alive < 2 || cells_alive > 3)
+				? false //kill
+				: grid_[pnt] //forward
+			)
+			: ( // dead
+				(cells_alive == 3)
+				? true //resurect
+				: grid_[pnt] //forward
+			);
+
+		grid_computed.grid[pnt_from] = state;
+		grid_pixels[pnt_from] = state ? color_true : color_false;
+	}
 }
 
-
-__host__ void do_step_gl(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed, float4* grid_pixels, float4 color_true, float4 color_false, int screen_x, int screen_y){
+__host__ void do_step_shared_gl(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed, float4* grid_pixels, float4 color_true, float4 color_false){
 	dim3 block_size_extended = dim3(block_size.x + 2, block_size.y + 2);
-	gol_step_kernel_shared <<< grid_size, block_size_extended, (block_size_extended.x) * (block_size_extended.y) * sizeof(bool) >>> (grid_const, grid_computed);
+	gol_step_kernel_shared_gl <<< grid_size, block_size_extended, (block_size_extended.x) * (block_size_extended.y) * sizeof(bool) >>> (grid_const, grid_computed, grid_pixels, color_true, color_false);
 	CudaCheckError();
 	auto tmp = grid_computed;
 	grid_computed = grid_const;
 	grid_const = tmp;
-
-	dim3 grid_size_screen = dim3(screen_x / 8, screen_y / 8);
-	gol_step_kernel_gl <<< grid_size_screen, block_size >>> (grid_const, grid_pixels, color_true, color_false);
-	CudaCheckError();
 }

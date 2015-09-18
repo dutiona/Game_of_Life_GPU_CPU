@@ -22,7 +22,7 @@ public:
 			//glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 			glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 			glutInitWindowPosition(0, 0);
-			glutInitWindowSize(screen_x_, screen_y_);
+			glutInitWindowSize(grid_width_, grid_height_);
 			glutCreateWindow("Game of Life");
 			glClearColor(120.0, 120.0, 120.0, 1.0);
 			//glEnable(GL_DEPTH_TEST);
@@ -78,24 +78,24 @@ public:
 			block_size_ = dim3(8, 8);
 			freeGrid(cpu_grid_shared_); //Plus besoin, openGL ira directement chercher la grille sur GPU
 
-			CudaSafeCall(cudaMalloc(&grid_pixels_, screen_x_*screen_y_*sizeof(float4)));
-			pixels_ = static_cast<float4*>(malloc(screen_x_*screen_y_*sizeof(float4)));
+			CudaSafeCall(cudaMalloc(&grid_pixels_, grid_width_*grid_height_*sizeof(float4)));
+			//pixels_ = static_cast<float4*>(malloc(grid_width_*grid_height_*sizeof(float4)));
 		}
 		
 
 		{///Buffer init
-			//glGenBuffers(1, &imageBuffer_);
-			//glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imageBuffer_);
-			//glBufferData(GL_PIXEL_UNPACK_BUFFER, screen_x_ * screen_y_ * sizeof(float4), 0, GL_DYNAMIC_COPY);
-			//CudaSafeCall(cudaGraphicsGLRegisterBuffer(&imageBuffer_CUDA_, imageBuffer_, cudaGraphicsRegisterFlagsWriteDiscard));
-			//
-			//glEnable(GL_TEXTURE_2D); // Enable Texturing
-			//glGenTextures(1, &imageTex_); // Generate a texture ID
-			//glBindTexture(GL_TEXTURE_2D, imageTex_); // Make this the current texture (GL is state-based)
-			//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_x_, screen_y_, 0, GL_RGBA, GL_FLOAT, NULL); // Allocate the texture memory. The last parameter is NULL since we only want to allocate memory, not initialize it 
-			//// Must set the filter mode, GL_LINEAR enables interpolation when scaling 
-			//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glGenBuffers(1, &imageBuffer_);
+			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imageBuffer_);
+			glBufferData(GL_PIXEL_UNPACK_BUFFER, grid_width_ * grid_height_ * sizeof(float4), 0, GL_DYNAMIC_COPY);
+			CudaSafeCall(cudaGraphicsGLRegisterBuffer(&imageBuffer_CUDA_, imageBuffer_, cudaGraphicsRegisterFlagsWriteDiscard));
+			
+			glEnable(GL_TEXTURE_2D); // Enable Texturing
+			glGenTextures(1, &imageTex_); // Generate a texture ID
+			glBindTexture(GL_TEXTURE_2D, imageTex_); // Make this the current texture (GL is state-based)
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, grid_width_, grid_height_, 0, GL_RGBA, GL_FLOAT, NULL); // Allocate the texture memory. The last parameter is NULL since we only want to allocate memory, not initialize it 
+			// Must set the filter mode, GL_LINEAR enables interpolation when scaling 
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		}
     };
 
@@ -105,17 +105,17 @@ public:
 
 		//Clean
 
-		//CudaSafeCall(cudaGraphicsUnregisterResource(imageBuffer_CUDA_));
+		CudaSafeCall(cudaGraphicsUnregisterResource(imageBuffer_CUDA_));
 		freeGridCuda(grid_const_);
 		freeGridCuda(grid_computed_);
 
-		//glDeleteTextures(1, &imageTex_);
-		//glDeleteBuffers(1, &imageBuffer_);
+		glDeleteTextures(1, &imageTex_);
+		glDeleteBuffers(1, &imageBuffer_);
     }
 
 private:
-	static int screen_x_;
-	static int screen_y_;
+	//static int screen_x_;
+	//static int screen_y_;
 	static int win_width_;
 	static int win_height_;
 	static GLuint imageTex_;
@@ -140,12 +140,12 @@ private:
 
 	static void display(){
 
-		/*
+		
 		// http://www.scribd.com/doc/84859529/57/OpenGL-Interoperability p.49
 		// http://on-demand.gputechconf.com/gtc/2012/presentations/SS101B-Mixing-Graphics-Compute.pdf
 
 		CudaSafeCall(cudaGraphicsMapResources(1, &imageBuffer_CUDA_, 0));
-		size_t num_bytes;//screen_x_*screen_y_*16
+		size_t num_bytes;
 		CudaSafeCall(cudaGraphicsResourceGetMappedPointer((void**)&grid_pixels_, &num_bytes, imageBuffer_CUDA_));
 		
 
@@ -153,41 +153,47 @@ private:
 		float4 color_false; color_false.x = color_false_; color_false.y = color_false_; color_false.z = color_false_; color_false.w = 1.0;
 
 		//Kernel call
-		do_step_gl(grid_size_, block_size_, grid_const_, grid_computed_, grid_pixels_, color_true, color_false, screen_x_, screen_y_);
+		do_step_shared_gl(grid_size_, block_size_, grid_const_, grid_computed_, grid_pixels_, color_true, color_false);
+		//CudaSafeCall(cudaMemcpy(pixels_, grid_pixels_, grid_width_*grid_height_*sizeof(float4), cudaMemcpyDeviceToHost));
 
 
 		//juliaKernel << <dimGrid, dimBlock >> >(cupixels, cuseedr, cuseedi, cuprecision, cuscale);
 
 		CudaSafeCall(cudaGraphicsUnmapResources(1, &imageBuffer_CUDA_));
 
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// http://www.nvidia.com/content/GTC/documents/1055_GTC09.pdf
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imageBuffer_); // Select the appropriate buffer 	
 		glBindTexture(GL_TEXTURE_2D, imageTex_); // Select the appropriate texture	
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, screen_x_, screen_y_, GL_RGBA, GL_FLOAT, NULL); // Make a texture from the buffer
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, grid_width_, grid_height_, GL_RGBA, GL_FLOAT, NULL); // Make a texture from the buffer
 
 		glBegin(GL_QUADS);
 			glTexCoord2f(0, 1.0f);
 			glVertex3f(0, 0, 0);
 			glTexCoord2f(0, 0);
-			glVertex3f(0, screen_y_, 0);
+			glVertex3f(0, grid_height_, 0);
 			glTexCoord2f(1.0f, 0);
-			glVertex3f(screen_x_, screen_y_, 0);
+			glVertex3f(grid_width_, grid_height_, 0);
 			glTexCoord2f(1.0f, 1.0f);
-			glVertex3f(screen_x_, 0, 0);
+			glVertex3f(grid_width_, 0, 0);
 		glEnd();
-		*/
+		
 
+
+		/*
 
 		float4 color_true; color_true.x = color_true_; color_true.y = color_true_; color_true.z = color_true_; color_true.w = 1.0;
 		float4 color_false; color_false.x = color_false_; color_false.y = color_false_; color_false.z = color_false_; color_false.w = 1.0;
 
 		//Kernel call
-		do_step_gl(grid_size_, block_size_, grid_const_, grid_computed_, grid_pixels_, color_true, color_false, screen_x_, screen_y_);
-		CudaSafeCall(cudaMemcpy(pixels_, grid_pixels_, screen_x_*screen_y_*sizeof(float4), cudaMemcpyDeviceToHost));
-		glDrawPixels(screen_x_, screen_y_, GL_RGBA, GL_FLOAT, pixels_);
+		do_step_shared_gl(grid_size_, block_size_, grid_const_, grid_computed_, grid_pixels_, color_true, color_false);
+		CudaSafeCall(cudaMemcpy(pixels_, grid_pixels_, grid_width_*grid_height_*sizeof(float4), cudaMemcpyDeviceToHost));
+		//glDrawPixels(grid_width_, grid_height_, GL_RGBA, GL_FLOAT, pixels_);
 
 		glutSwapBuffers();
+
+		*/
 
 		//Fin boucle affichage
 
