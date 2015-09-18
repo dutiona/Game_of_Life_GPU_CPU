@@ -70,8 +70,8 @@ __global__ void gol_step_kernel_shared(Grid grid_const, Grid grid_computed);
 __host__ void launch_kernel_shared(const Grid& cpu_grid, size_t nb_loop, unsigned int width, unsigned int height);
 
 //OpenGl
-__host__ void do_step_shared_gl(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed, float4* grid_pixels, float4 color_true, float4 color_false);
-__global__ void gol_step_kernel_shared_gl(const Grid grid_const, Grid grid_computed, float4* grid_pixels, float4 color_true, float4 color_false);
+__host__ void do_step_shared_gl(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed, uchar4* grid_pixels, uchar4 color_true, uchar4 color_false);
+__global__ void gol_step_kernel_shared_gl(const Grid grid_const, Grid grid_computed, uchar4* grid_pixels, uchar4 color_true, uchar4 color_false);
 
 //Internal
 __host__ void printGrid(Grid& grid);

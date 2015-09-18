@@ -9,12 +9,12 @@
 
 int main(int argc, char* argv[]){
 
-	GLDisplay::init(&argc, argv);
-	GLDisplay::run();
+	//GLDisplay::init(&argc, argv);
+	//GLDisplay::run();
 
-	size_t nb_loop = 10000;
-	unsigned int width = 16 * 8 * 2; //2^8
-	unsigned int height = 16 * 8 * 2; //2^8
+	size_t nb_loop = 1000;
+	unsigned int width = 8 * 8 * 8 * 2; //2^10
+	unsigned int height = 8 * 8 * 8 * 2; //2^10
 	int fill_thresold = 30;
 	Grid cpu_grid_global, cpu_grid_shared;
 

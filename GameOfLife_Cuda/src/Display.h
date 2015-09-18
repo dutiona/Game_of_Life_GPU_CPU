@@ -15,29 +15,16 @@
 class GLDisplay
 {
 public:
-    static void init(int* argc, char* argv[])
-    {
+	static void init(int* argc, char* argv[]){
 		{//OpenGL init
 			glutInit(argc, argv);
-			//glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 			glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 			glutInitWindowPosition(0, 0);
 			glutInitWindowSize(grid_width_, grid_height_);
 			glutCreateWindow("Game of Life");
 			glClearColor(120.0, 120.0, 120.0, 1.0);
-			//glEnable(GL_DEPTH_TEST);
 			glDisable(GL_DEPTH_TEST);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-			// View Ortho
-			// Sets up the OpenGL window so that (0,0) corresponds to the top left corner, 
-			// and (SCREEN_X,SCREEN_Y) corresponds to the bottom right hand corner.  
-			glMatrixMode(GL_PROJECTION);
-			glLoadIdentity();
-			glOrtho(0, 1024, 800, 0, 0, 1);
-			glMatrixMode(GL_MODELVIEW);
-			glLoadIdentity();
-			glTranslatef(0.375, 0.375, 0); // Displacement trick for exact pixelization
 
 			// Registering GL buffer for CUDA.
 			GLint GlewInitResult = glewInit();
@@ -47,11 +34,8 @@ public:
 		}
 
 		{//Register callback
-
 			glutDisplayFunc(&GLDisplay::display);
 			glutIdleFunc(&GLDisplay::idle);
-			//glutMotionFunc(mouseMotion);
-			//glutMouseFunc(mouse);
 			//glutKeyboardFunc(processNormalKeys);
 			//glutSpecialFunc(processSpecialKeys);
 		}
@@ -78,53 +62,61 @@ public:
 			block_size_ = dim3(8, 8);
 			freeGrid(cpu_grid_shared_); //Plus besoin, openGL ira directement chercher la grille sur GPU
 
-			CudaSafeCall(cudaMalloc(&grid_pixels_, grid_width_*grid_height_*sizeof(float4)));
-			//pixels_ = static_cast<float4*>(malloc(grid_width_*grid_height_*sizeof(float4)));
+			if (!interop_){
+				CudaSafeCall(cudaMalloc(&grid_pixels_, grid_width_*grid_height_*sizeof(uchar4)));
+				pixels_ = static_cast<uchar4*>(malloc(grid_width_*grid_height_*sizeof(uchar4)));
+			}
 		}
-		
 
-		{///Buffer init
+		if (interop_){
+			///Buffer init
 			glGenBuffers(1, &imageBuffer_);
 			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imageBuffer_);
-			glBufferData(GL_PIXEL_UNPACK_BUFFER, grid_width_ * grid_height_ * sizeof(float4), 0, GL_DYNAMIC_COPY);
-			CudaSafeCall(cudaGraphicsGLRegisterBuffer(&imageBuffer_CUDA_, imageBuffer_, cudaGraphicsRegisterFlagsWriteDiscard));
-			
-			glEnable(GL_TEXTURE_2D); // Enable Texturing
-			glGenTextures(1, &imageTex_); // Generate a texture ID
-			glBindTexture(GL_TEXTURE_2D, imageTex_); // Make this the current texture (GL is state-based)
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, grid_width_, grid_height_, 0, GL_RGBA, GL_FLOAT, NULL); // Allocate the texture memory. The last parameter is NULL since we only want to allocate memory, not initialize it 
-			// Must set the filter mode, GL_LINEAR enables interpolation when scaling 
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		}
-    };
+			glBufferData(GL_PIXEL_UNPACK_BUFFER, grid_width_ * grid_height_ * sizeof(uchar4), NULL, GL_DYNAMIC_COPY);
 
-    static void run()
-    {
-        glutMainLoop();
+			//Allocation mémoire GPU
+			cudaGLRegisterBufferObject(imageBuffer_);
+
+			glGenTextures(1, &imageTex_);
+			glBindTexture(GL_TEXTURE_2D, imageTex_);
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, grid_width_, grid_height_, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		}
+	};
+
+	static void run()
+	{
+		glutMainLoop();
 
 		//Clean
-
-		CudaSafeCall(cudaGraphicsUnregisterResource(imageBuffer_CUDA_));
 		freeGridCuda(grid_const_);
 		freeGridCuda(grid_computed_);
 
-		glDeleteTextures(1, &imageTex_);
-		glDeleteBuffers(1, &imageBuffer_);
-    }
+		if (interop_){
+			glDeleteTextures(1, &imageTex_);
+			glDeleteBuffers(1, &imageBuffer_);
+		}
+		else{
+			free(pixels_);
+		}
+	}
 
 private:
-	//static int screen_x_;
-	//static int screen_y_;
+	static bool interop_;
 	static int win_width_;
 	static int win_height_;
 	static GLuint imageTex_;
 	static GLuint imageBuffer_;
 	static struct cudaGraphicsResource* imageBuffer_CUDA_;
-	static float4* grid_pixels_;
-	static float4* pixels_;
-	static unsigned char color_true_;
-	static unsigned char color_false_;
+	static uchar4* grid_pixels_;
+	static uchar4* pixels_;
+	static uchar4 color_true_;
+	static uchar4 color_false_;
 	static unsigned int grid_width_;
 	static unsigned int grid_height_;
 	static int fill_thresold_;
@@ -133,6 +125,8 @@ private:
 	static Grid grid_computed_;
 	static dim3 grid_size_;
 	static dim3 block_size_;
+	static int frame_;
+	static int timebase_;
 
 	static void idle(){
 		glutPostRedisplay();
@@ -140,88 +134,64 @@ private:
 
 	static void display(){
 
-		
-		// http://www.scribd.com/doc/84859529/57/OpenGL-Interoperability p.49
-		// http://on-demand.gputechconf.com/gtc/2012/presentations/SS101B-Mixing-Graphics-Compute.pdf
+		frame_++;
+		int timecur = glutGet(GLUT_ELAPSED_TIME);
 
-		CudaSafeCall(cudaGraphicsMapResources(1, &imageBuffer_CUDA_, 0));
-		size_t num_bytes;
-		CudaSafeCall(cudaGraphicsResourceGetMappedPointer((void**)&grid_pixels_, &num_bytes, imageBuffer_CUDA_));
-		
+		if (timecur - timebase_ > 500) {
+			char t[200];
+			char* m = "";
+			sprintf(t, "%s:  %s, %s mode, (%.2f) FPS", "Game of Life", m, interop_ ? "interop" : "gpu", frame_ * 1000 / (double)(timecur - timebase_));
+			glutSetWindowTitle(t);
+			timebase_ = timecur;
+			frame_ = 0;
+		}
 
-		float4 color_true; color_true.x = color_true_; color_true.y = color_true_; color_true.z = color_true_; color_true.w = 1.0;
-		float4 color_false; color_false.x = color_false_; color_false.y = color_false_; color_false.z = color_false_; color_false.w = 1.0;
+		if (interop_){
+			// Mapping de l'alloc GPU sur un pointeur à envoyer au kernel et verouillage du buffer par cuda
+			cudaGLMapBufferObject((void**)&grid_pixels_, imageBuffer_);
 
-		//Kernel call
-		do_step_shared_gl(grid_size_, block_size_, grid_const_, grid_computed_, grid_pixels_, color_true, color_false);
-		//CudaSafeCall(cudaMemcpy(pixels_, grid_pixels_, grid_width_*grid_height_*sizeof(float4), cudaMemcpyDeviceToHost));
+			//Kernel call
+			do_step_shared_gl(grid_size_, block_size_, grid_const_, grid_computed_, grid_pixels_, color_true_, color_false_);
 
+			// Dissociation de cuda du buffer pour pouvoir autoriser openGL à lire dedans
+			cudaGLUnmapBufferObject(imageBuffer_);
 
-		//juliaKernel << <dimGrid, dimBlock >> >(cupixels, cuseedr, cuseedi, cuprecision, cuscale);
+			//Bind du buffer par OpenGL
+			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imageBuffer_);
+			glBindTexture(GL_TEXTURE_2D, imageTex_);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, grid_width_, grid_height_, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
-		CudaSafeCall(cudaGraphicsUnmapResources(1, &imageBuffer_CUDA_));
+			//Affichage
+			glClear(GL_COLOR_BUFFER_BIT);
 
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glMatrixMode(GL_MODELVIEW);
+			glLoadIdentity();
+			glTranslatef(0.f, 0.f, -1.f); /* eye position */
 
-		// http://www.nvidia.com/content/GTC/documents/1055_GTC09.pdf
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imageBuffer_); // Select the appropriate buffer 	
-		glBindTexture(GL_TEXTURE_2D, imageTex_); // Select the appropriate texture	
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, grid_width_, grid_height_, GL_RGBA, GL_FLOAT, NULL); // Make a texture from the buffer
+			glEnable(GL_TEXTURE_2D); /* enable texture mapping */
+			glBindTexture(GL_TEXTURE_2D, imageTex_); /* bind to our texture, has id of 13 */
 
-		glBegin(GL_QUADS);
-			glTexCoord2f(0, 1.0f);
-			glVertex3f(0, 0, 0);
-			glTexCoord2f(0, 0);
-			glVertex3f(0, grid_height_, 0);
-			glTexCoord2f(1.0f, 0);
-			glVertex3f(grid_width_, grid_height_, 0);
-			glTexCoord2f(1.0f, 1.0f);
-			glVertex3f(grid_width_, 0, 0);
-		glEnd();
-		
+			//Placage de la texture dans la primitive Quad
+			glBegin(GL_QUADS);
+				glTexCoord2f(0.0f, 0.0f); /* lower left corner of image */
+				glVertex3f(-1.f, -1.f, 0.0f);
+				glTexCoord2f(1.0f, 0.0f); /* lower right corner of image */
+				glVertex3f(1.f, -1.f, 0.0f);
+				glTexCoord2f(1.0f, 1.0f); /* upper right corner of image */
+				glVertex3f(1.f, 1.f, 0.0f);
+				glTexCoord2f(0.0f, 1.0f); /* upper left corner of image */
+				glVertex3f(-1.f, 1.0f, 0.0f);
+			glEnd();
 
-
-		/*
-
-		float4 color_true; color_true.x = color_true_; color_true.y = color_true_; color_true.z = color_true_; color_true.w = 1.0;
-		float4 color_false; color_false.x = color_false_; color_false.y = color_false_; color_false.z = color_false_; color_false.w = 1.0;
-
-		//Kernel call
-		do_step_shared_gl(grid_size_, block_size_, grid_const_, grid_computed_, grid_pixels_, color_true, color_false);
-		CudaSafeCall(cudaMemcpy(pixels_, grid_pixels_, grid_width_*grid_height_*sizeof(float4), cudaMemcpyDeviceToHost));
-		//glDrawPixels(grid_width_, grid_height_, GL_RGBA, GL_FLOAT, pixels_);
-
+			glDisable(GL_TEXTURE_2D); /* disable texture mapping */
+		}
+		else{
+			do_step_shared_gl(grid_size_, block_size_, grid_const_, grid_computed_, grid_pixels_, color_true_, color_false_);
+			CudaSafeCall(cudaMemcpy(pixels_, grid_pixels_, grid_width_*grid_height_*sizeof(uchar4), cudaMemcpyDeviceToHost));
+			glDrawPixels(grid_width_, grid_height_, GL_RGBA, GL_UNSIGNED_BYTE, pixels_);
+		}
 		glutSwapBuffers();
 
-		*/
 
-		//Fin boucle affichage
-
-
-
-
-
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		//
-		//glMatrixMode(GL_MODELVIEW);
-		//glLoadIdentity();
-		//glTranslatef(0.f, 0.f, -1.f); /* eye position */
-		//
-		//glEnable(GL_TEXTURE_2D); /* enable texture mapping */
-		//glBindTexture(GL_TEXTURE_2D, texture_); /* bind to our texture, has id of 13 */
-		//
-		//glBegin(GL_QUADS);
-		//glTexCoord2f(0.0f, 0.0f); /* lower left corner of image */
-		//glVertex3f(-1.f, -1.f, 0.0f);
-		//glTexCoord2f(1.0f, 0.0f); /* lower right corner of image */
-		//glVertex3f(1.f, -1.f, 0.0f);
-		//glTexCoord2f(1.0f, 1.0f); /* upper right corner of image */
-		//glVertex3f(1.f, 1.f, 0.0f);
-		//glTexCoord2f(0.0f, 1.0f); /* upper left corner of image */
-		//glVertex3f(-1.f, 1.0f, 0.0f);
-		//glEnd();
-		//
-		//glDisable(GL_TEXTURE_2D); /* disable texture mapping */
-		//glutSwapBuffers();
 	}
 };
