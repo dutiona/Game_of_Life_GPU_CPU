@@ -72,7 +72,7 @@ void juliaColor(float4* pixel, double x, double y, double seedr, double seedi, i
 	for (i=0; i<precision; i++) {
 		a = a * a + seed;
 		if (a.magnitude2() > 4) {
-			double c = 1-i/(double)precision;
+			float c = static_cast<float>(1-i/(double)precision);
 			pixel->x = c;
 			pixel->y = c;
 			return;

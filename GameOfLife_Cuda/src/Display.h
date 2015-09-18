@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <random>
+#include <sstream>
+#include <iomanip>
 
 #define GLEW_STATIC
 
@@ -36,8 +38,6 @@ public:
 		{//Register callback
 			glutDisplayFunc(&GLDisplay::display);
 			glutIdleFunc(&GLDisplay::idle);
-			//glutKeyboardFunc(processNormalKeys);
-			//glutSpecialFunc(processSpecialKeys);
 		}
 
 		{///Init cuda grid random
@@ -50,7 +50,7 @@ public:
 			for (unsigned int i = 0; i < grid_width_; ++i){
 				for (unsigned int j = 0; j < grid_width_; ++j){
 					//Remplissage aléatoire de la grille en fonction du fill_thresold
-					cpu_grid_shared_.grid[i*cpu_grid_shared_.width + j] = uniform_distrib(rd_mt_engine) < fill_thresold_;
+					cpu_grid_shared_.grid[i*cpu_grid_shared_.width + j] = uniform_distrib(rd_mt_engine) < (100 - fill_thresold_);
 				}
 			}
 			CudaSafeCall(
@@ -105,27 +105,30 @@ public:
 		}
 	}
 
-private:
+	//Voir le cpp pour la config
+
+	static int screen_x_;
+	static int screen_y_;
 	static bool interop_;
-	static int win_width_;
-	static int win_height_;
-	static GLuint imageTex_;
-	static GLuint imageBuffer_;
-	static struct cudaGraphicsResource* imageBuffer_CUDA_;
-	static uchar4* grid_pixels_;
-	static uchar4* pixels_;
 	static uchar4 color_true_;
 	static uchar4 color_false_;
 	static unsigned int grid_width_;
 	static unsigned int grid_height_;
 	static int fill_thresold_;
+
+private:
 	static Grid cpu_grid_shared_;
 	static Grid grid_const_;
 	static Grid grid_computed_;
+	static uchar4* grid_pixels_;
+	static uchar4* pixels_;
 	static dim3 grid_size_;
 	static dim3 block_size_;
 	static int frame_;
 	static int timebase_;
+	static GLuint imageTex_;
+	static GLuint imageBuffer_;
+
 
 	static void idle(){
 		glutPostRedisplay();
@@ -137,10 +140,9 @@ private:
 		int timecur = glutGet(GLUT_ELAPSED_TIME);
 
 		if (timecur - timebase_ > 500) {
-			char t[200];
-			char* m = "";
-			sprintf_s(t, "%s:  %s, %s mode, (%.2f) FPS", "Game of Life", m, interop_ ? "interop" : "gpu", frame_ * 1000 / (double)(timecur - timebase_));
-			glutSetWindowTitle(t);
+			std::ostringstream win_title;
+			win_title << "Game of Life" << " : " << (interop_ ? "INTEROP" : "GPU") << ", " << std::setprecision(4) << (frame_ * 1000 / (double)(timecur - timebase_)) << "FPS";
+			glutSetWindowTitle(win_title.str().c_str());
 			timebase_ = timecur;
 			frame_ = 0;
 		}

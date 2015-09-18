@@ -44,7 +44,7 @@ void GoL_Engine::init(){
 	for (int i = 0; i < grid_.width(); ++i){
 		for (int j = 0; j < grid_.height(); ++j){
 			//Remplissage aléatoire de la grille en fonction du fill_thresold
-			if (uniform_distrib(rd_mt_engine) < fill_thresold_){
+			if (uniform_distrib(rd_mt_engine) < (100 - fill_thresold_)){
 				grid_(i, j).resurect();
 			}
 			else{

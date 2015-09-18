@@ -11,7 +11,7 @@ int main(int /*argc*/, char* /*argv[]*/){
 	//Serial
 
 	std::cout << "GoL serial :" << std::endl;
-	auto gol_engine = std::make_unique<GoL_Engine>(10, 10, 30, 1000); //2^7
+	auto gol_engine = std::make_unique<GoL_Engine>(10, 10, 70, 1000); //2^7
 	gol_engine->init();
 
 	const auto start_serial = std::chrono::high_resolution_clock::now();
@@ -24,7 +24,7 @@ int main(int /*argc*/, char* /*argv[]*/){
 	//Omp
 
 	std::cout << "GoL OpenMP :" << std::endl;
-	gol_engine = std::make_unique<GoL_Engine>(10, 10, 30, 1000); //2^7
+	gol_engine = std::make_unique<GoL_Engine>(10, 10, 70, 1000); //2^7
 	gol_engine->init();
 
 	const auto start_omp = std::chrono::high_resolution_clock::now();
@@ -38,7 +38,7 @@ int main(int /*argc*/, char* /*argv[]*/){
 	//std::thread
 
 	std::cout << "GoL std::thread :" << std::endl;
-	gol_engine = std::make_unique<GoL_Engine>(10, 10, 30, 1000); //2^7
+	gol_engine = std::make_unique<GoL_Engine>(10, 10, 70, 1000); //2^7
 	gol_engine->init();
 
 	const auto start_std_thread = std::chrono::high_resolution_clock::now();
