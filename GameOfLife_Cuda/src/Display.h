@@ -101,6 +101,7 @@ public:
 			glDeleteBuffers(1, &imageBuffer_);
 		}
 		else{
+			CudaSafeCall(cudaFree(grid_pixels_));
 			free(pixels_);
 		}
 	}

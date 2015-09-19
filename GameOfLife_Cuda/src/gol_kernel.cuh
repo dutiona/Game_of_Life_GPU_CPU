@@ -54,11 +54,6 @@ __host__ void freeGrid(Grid& g);
 __host__ void freeGridCuda(Grid& g);
 
 
-//To OpenGL display
-__host__ void do_step_gl(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed, unsigned char* colorBuffer, const char& color_true, const char& color_false);
-__global__ void gol_step_kernel_gl(Grid grid_const, Grid grid_computed, float* colorBuffer, const char& color_true, const char& color_false);
-
-
 //Global
 __host__ void do_step(const dim3& grid_size, const dim3& block_size, Grid& grid_const, Grid& grid_computed);
 __global__ void gol_step_kernel(Grid grid_const, Grid grid_computed);
@@ -76,8 +71,4 @@ __global__ void gol_step_kernel_shared_gl(const Grid grid_const, Grid grid_compu
 //Internal
 __host__ void printGrid(Grid& grid);
 __host__ bool gridAreEquals(const Grid& glhs, const Grid& grhs);
-
-
-
-
 
